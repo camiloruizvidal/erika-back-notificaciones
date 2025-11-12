@@ -1,8 +1,17 @@
 export class ErrorPersonalizado extends Error {
+  private readonly _codigo: number;
+
   constructor(codigo: number, mensaje: string) {
-    super();
-    this.code = codigo;
-    this.message = mensaje;
+    super(mensaje);
+    this._codigo = codigo;
+    this.name = 'ErrorPersonalizado';
   }
-  private code: number;
+
+  get codigo(): number {
+    return this._codigo;
+  }
+
+  get code(): number {
+    return this._codigo;
+  }
 }
