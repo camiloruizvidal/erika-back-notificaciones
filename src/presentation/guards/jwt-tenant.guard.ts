@@ -10,9 +10,9 @@ import { Constantes } from '../../utils/constantes';
 import { Config } from '../../infrastructure/config/config';
 import { IPayloadJwt } from '../../shared/interfaces/auth.interfaces';
 
-interface RequestConContexto extends Request {
-  tenantId?: number;
-  usuarioId?: number;
+interface IRequestConContexto extends Request {
+  tenantId: number;
+  usuarioId: number;
 }
 
 @Injectable()
@@ -20,7 +20,7 @@ export class JwtTenantGuard implements CanActivate {
   constructor(private readonly jwtService: JwtService) {}
 
   public async canActivate(context: ExecutionContext): Promise<boolean> {
-    const request = context.switchToHttp().getRequest<RequestConContexto>();
+    const request = context.switchToHttp().getRequest<IRequestConContexto>();
     const token = this.obtenerToken(request);
 
     try {
@@ -28,12 +28,12 @@ export class JwtTenantGuard implements CanActivate {
         secret: Config.jwtKey,
       });
 
-      if (!payload?.tenant_id || !payload?.usuario_id) {
+      if (payload?.tenant_id === undefined || payload?.usuario_id === undefined) {
         throw new UnauthorizedException(Constantes.TOKEN_SIN_CLAIMS);
       }
 
-      request.tenantId = payload.tenant_id;
-      request.usuarioId = payload.usuario_id;
+      request.tenantId = Number(payload.tenant_id);
+      request.usuarioId = Number(payload.usuario_id);
 
       return true;
     } catch (error) {
