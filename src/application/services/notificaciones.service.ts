@@ -1,11 +1,11 @@
 import { Injectable, Logger } from '@nestjs/common';
+import * as moment from 'moment-timezone';
 import { CuentaCobroRepository } from '../../infrastructure/persistence/repositories/cuenta-cobro.repository';
 import { PlantillaRepository } from '../../infrastructure/persistence/repositories/plantilla.repository';
 import { PdfService } from './pdf.service';
 import { PagosService } from './pagos.service';
 import { CuentaCobroModel } from '../../infrastructure/persistence/models/cuenta-cobro.model';
 import { ClienteModel } from '../../infrastructure/persistence/models/cliente.model';
-import * as moment from 'moment-timezone';
 
 export interface IEnviarCorreoRequest {
   destinatario: string;
@@ -19,7 +19,6 @@ export class NotificacionesService {
   private readonly logger = new Logger(NotificacionesService.name);
 
   constructor(
-    private readonly cuentaCobroRepository: CuentaCobroRepository,
     private readonly plantillaRepository: PlantillaRepository,
     private readonly pdfService: PdfService,
     private readonly pagosService: PagosService,
@@ -33,29 +32,37 @@ export class NotificacionesService {
 
       this.logger.log(`Correo enviado exitosamente a: ${datos.destinatario}`);
     } catch (error) {
-      this.logger.error(`Error al enviar correo a ${datos.destinatario}:`, error);
+      this.logger.error(
+        `Error al enviar correo a ${datos.destinatario}:`,
+        error,
+      );
       throw error;
     }
   }
 
   async generarPdfPorId(cuentaCobroId: number): Promise<string> {
     try {
-      this.logger.log(`Generando PDF de prueba para cuenta de cobro ID: ${cuentaCobroId}`);
-
-      const cuentaCobro = await this.cuentaCobroRepository.buscarPorIdConRelaciones(
-        cuentaCobroId,
+      this.logger.log(
+        `Generando PDF de prueba para cuenta de cobro ID: ${cuentaCobroId}`,
       );
 
+      const cuentaCobro =
+        await CuentaCobroRepository.buscarPorIdConRelaciones(cuentaCobroId);
+
       if (!cuentaCobro) {
-        throw new Error(`No se encontró cuenta de cobro con ID ${cuentaCobroId}`);
+        throw new Error(
+          `No se encontró cuenta de cobro con ID ${cuentaCobroId}`,
+        );
       }
 
-      const cliente = await this.cuentaCobroRepository.buscarClientePorId(
+      const cliente = await CuentaCobroRepository.buscarClientePorId(
         cuentaCobro.clienteId,
       );
 
       if (!cliente) {
-        throw new Error(`No se encontró cliente con ID ${cuentaCobro.clienteId}`);
+        throw new Error(
+          `No se encontró cliente con ID ${cuentaCobro.clienteId}`,
+        );
       }
 
       const plantilla = await this.plantillaRepository.buscarPorTenantYTipo(
@@ -69,11 +76,15 @@ export class NotificacionesService {
         );
       }
 
-      const diasGracia = await this.cuentaCobroRepository.buscarDiasGraciaPorClientePaqueteId(
-        cuentaCobro.clientePaqueteId,
-      );
+      const diasGracia =
+        await CuentaCobroRepository.buscarDiasGraciaPorClientePaqueteId(
+          cuentaCobro.clientePaqueteId,
+        );
 
-      const fechaLimitePago = this.calcularFechaLimitePago(cuentaCobro.fechaCobro, diasGracia);
+      const fechaLimitePago = this.calcularFechaLimitePago(
+        cuentaCobro.fechaCobro,
+        diasGracia,
+      );
 
       let linkPago = cuentaCobro.linkPago;
 
@@ -82,7 +93,7 @@ export class NotificacionesService {
           `Generando link de pago Woompi para cuenta de cobro ID: ${cuentaCobro.id}`,
         );
 
-        linkPago = await this.woompiService.generarLinkPago({
+        linkPago = await this.pagosService.generarLinkPago({
           cuentaCobroId: cuentaCobro.id,
           valorTotal: Number(cuentaCobro.valorTotal),
           referencia: `CC-${cuentaCobro.id}`,
@@ -92,7 +103,16 @@ export class NotificacionesService {
           fechaLimitePago,
         });
 
-        await this.cuentaCobroRepository.actualizarLinkPago(cuentaCobro.id, linkPago);
+        await CuentaCobroRepository.actualizarLinkPago(
+          cuentaCobro.id,
+          linkPago,
+        );
+      }
+
+      if (!linkPago) {
+        throw new Error(
+          `No se pudo generar el link de pago para cuenta de cobro ${cuentaCobro.id}`,
+        );
       }
 
       const urlPdf = await this.pdfService.generarPdf(
@@ -103,13 +123,16 @@ export class NotificacionesService {
         fechaLimitePago,
       );
 
-      await this.cuentaCobroRepository.actualizarUrlPdf(cuentaCobro.id, urlPdf);
+      await CuentaCobroRepository.actualizarUrlPdf(cuentaCobro.id, urlPdf);
 
       this.logger.log(`PDF de prueba generado exitosamente: ${urlPdf}`);
 
       return urlPdf;
     } catch (error) {
-      this.logger.error(`Error al generar PDF de prueba para cuenta de cobro ${cuentaCobroId}:`, error);
+      this.logger.error(
+        `Error al generar PDF de prueba para cuenta de cobro ${cuentaCobroId}:`,
+        error,
+      );
       throw error;
     }
   }
@@ -126,12 +149,17 @@ export class NotificacionesService {
       `Iniciando generación de PDFs por batches de ${batchSize} para fecha: ${fechaCobro}`,
     );
 
+    const inicioDia = moment.utc(fechaCobro).startOf('day').toDate();
+    const finDia = moment.utc(fechaCobro).endOf('day').toDate();
+
     while (tieneMasRegistros) {
-      const resultado = await this.cuentaCobroRepository.buscarPorFechaCobroConRelaciones(
-        fechaCobro,
-        batchSize,
-        offset,
-      );
+      const resultado =
+        await CuentaCobroRepository.buscarPorFechaCobroConRelaciones(
+          inicioDia,
+          finDia,
+          batchSize,
+          offset,
+        );
 
       if (resultado.rows.length === 0) {
         tieneMasRegistros = false;
@@ -151,7 +179,7 @@ export class NotificacionesService {
             continue;
           }
 
-          const cliente = await this.cuentaCobroRepository.buscarClientePorId(
+          const cliente = await CuentaCobroRepository.buscarClientePorId(
             cuentaCobro.clienteId,
           );
 
@@ -174,11 +202,15 @@ export class NotificacionesService {
             continue;
           }
 
-          const diasGracia = await this.cuentaCobroRepository.buscarDiasGraciaPorClientePaqueteId(
-            cuentaCobro.clientePaqueteId,
-          );
+          const diasGracia =
+            await CuentaCobroRepository.buscarDiasGraciaPorClientePaqueteId(
+              cuentaCobro.clientePaqueteId,
+            );
 
-          const fechaLimitePago = this.calcularFechaLimitePago(cuentaCobro.fechaCobro, diasGracia);
+          const fechaLimitePago = this.calcularFechaLimitePago(
+            cuentaCobro.fechaCobro,
+            diasGracia,
+          );
 
           let linkPago = cuentaCobro.linkPago;
 
@@ -197,7 +229,17 @@ export class NotificacionesService {
               fechaLimitePago,
             });
 
-            await this.cuentaCobroRepository.actualizarLinkPago(cuentaCobro.id, linkPago);
+            await CuentaCobroRepository.actualizarLinkPago(
+              cuentaCobro.id,
+              linkPago,
+            );
+          }
+
+          if (!linkPago) {
+            this.logger.warn(
+              `No se pudo generar el link de pago para cuenta de cobro ${cuentaCobro.id}, omitiendo`,
+            );
+            continue;
           }
 
           const urlPdf = await this.pdfService.generarPdf(
@@ -208,7 +250,7 @@ export class NotificacionesService {
             fechaLimitePago,
           );
 
-          await this.cuentaCobroRepository.actualizarUrlPdf(cuentaCobro.id, urlPdf);
+          await CuentaCobroRepository.actualizarUrlPdf(cuentaCobro.id, urlPdf);
 
           totalGenerados++;
         } catch (error) {
@@ -223,7 +265,9 @@ export class NotificacionesService {
       tieneMasRegistros = resultado.rows.length === batchSize;
     }
 
-    this.logger.log(`Generación de PDFs completada. Total generados: ${totalGenerados}`);
+    this.logger.log(
+      `Generación de PDFs completada. Total generados: ${totalGenerados}`,
+    );
 
     return totalGenerados;
   }
@@ -240,12 +284,17 @@ export class NotificacionesService {
       `Iniciando envío de correos por batches de ${batchSize} para fecha: ${fechaCobro}`,
     );
 
+    const inicioDia = moment.utc(fechaCobro).startOf('day').toDate();
+    const finDia = moment.utc(fechaCobro).endOf('day').toDate();
+
     while (tieneMasRegistros) {
-      const resultado = await this.cuentaCobroRepository.buscarPorFechaCobroConRelaciones(
-        fechaCobro,
-        batchSize,
-        offset,
-      );
+      const resultado =
+        await CuentaCobroRepository.buscarPorFechaCobroConRelaciones(
+          inicioDia,
+          finDia,
+          batchSize,
+          offset,
+        );
 
       if (resultado.rows.length === 0) {
         tieneMasRegistros = false;
@@ -267,7 +316,7 @@ export class NotificacionesService {
             continue;
           }
 
-          const cliente = await this.cuentaCobroRepository.buscarClientePorId(
+          const cliente = await CuentaCobroRepository.buscarClientePorId(
             cuentaCobro.clienteId,
           );
 
@@ -296,10 +345,9 @@ export class NotificacionesService {
             cliente,
           );
 
-          const fechaCobroFormateada = new Date(cuentaCobro.fechaCobro).toLocaleDateString(
-            'es-CO',
-            { year: 'numeric', month: 'long' },
-          );
+          const fechaCobroFormateada = new Date(
+            cuentaCobro.fechaCobro,
+          ).toLocaleDateString('es-CO', { year: 'numeric', month: 'long' });
 
           await this.enviarCorreo({
             destinatario: cliente.correo,
@@ -308,7 +356,7 @@ export class NotificacionesService {
             urlPdf: cuentaCobro.urlPdf,
           });
 
-          await this.cuentaCobroRepository.actualizarEnvioCorreo(
+          await CuentaCobroRepository.actualizarEnvioCorreo(
             cuentaCobro.id,
             new Date(),
           );
@@ -326,9 +374,22 @@ export class NotificacionesService {
       tieneMasRegistros = resultado.rows.length === batchSize;
     }
 
-    this.logger.log(`Envío de correos completado. Total enviados: ${totalEnviados}`);
+    this.logger.log(
+      `Envío de correos completado. Total enviados: ${totalEnviados}`,
+    );
 
     return totalEnviados;
+  }
+
+  private calcularFechaLimitePago(
+    fechaCobro: Date,
+    diasGracia: number | null,
+  ): Date {
+    const fecha = moment.utc(fechaCobro);
+    if (diasGracia && diasGracia > 0) {
+      fecha.add(diasGracia, 'days');
+    }
+    return fecha.toDate();
   }
 
   private procesarPlantillaCorreo(
@@ -338,8 +399,14 @@ export class NotificacionesService {
   ): string {
     let resultado = plantilla;
 
-    resultado = resultado.replace(/\{\{cliente\.nombre\}\}/g, cliente.nombreCompleto);
-    resultado = resultado.replace(/\{\{cuentaCobro\.valorTotal\}\}/g, cuentaCobro.valorTotal.toString());
+    resultado = resultado.replace(
+      /\{\{cliente\.nombre\}\}/g,
+      cliente.nombreCompleto,
+    );
+    resultado = resultado.replace(
+      /\{\{cuentaCobro\.valorTotal\}\}/g,
+      cuentaCobro.valorTotal.toString(),
+    );
     resultado = resultado.replace(
       /\{\{cuentaCobro\.fechaCobro\}\}/g,
       new Date(cuentaCobro.fechaCobro).toLocaleDateString('es-CO'),
@@ -349,7 +416,9 @@ export class NotificacionesService {
     return resultado;
   }
 
-  private async enviarCorreoElectronico(datos: IEnviarCorreoRequest): Promise<void> {
+  private async enviarCorreoElectronico(
+    datos: IEnviarCorreoRequest,
+  ): Promise<void> {
     this.logger.log(`Simulando envío de correo a ${datos.destinatario}`);
     this.logger.debug(`Asunto: ${datos.asunto}`);
     this.logger.debug(`URL PDF: ${datos.urlPdf}`);
@@ -358,4 +427,3 @@ export class NotificacionesService {
     // Por ahora solo logueamos
   }
 }
-

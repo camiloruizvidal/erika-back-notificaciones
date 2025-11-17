@@ -8,9 +8,6 @@ import { ClienteModel } from '../models/cliente.model';
 import { ClientePaqueteModel } from '../models/cliente-paquete.model';
 import { TenantModel } from '../models/tenant.model';
 import { PlantillaModel } from '../models/plantilla.model';
-import { CuentaCobroRepository } from '../repositories/cuenta-cobro.repository';
-import { PlantillaRepository } from '../repositories/plantilla.repository';
-
 @Module({
   imports: [
     SequelizeModule.forRoot({
@@ -44,8 +41,6 @@ import { PlantillaRepository } from '../repositories/plantilla.repository';
       PlantillaModel,
     ]),
   ],
-  providers: [CuentaCobroRepository, PlantillaRepository],
-  exports: [CuentaCobroRepository, PlantillaRepository],
 })
 export class DatabaseModule {}
 

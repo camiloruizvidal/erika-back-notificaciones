@@ -13,7 +13,11 @@ export class Config {
   static readonly dbDialect = process.env.DB_DIALECT as Dialect;
   static readonly dbLogging = process.env.DB_LOGGING === 'true';
   static readonly jwtKey = process.env.JWT_KEY;
-  static readonly kafkaBroker = process.env.KAFKA_BROKER || 'localhost:9092';
-  static readonly kafkaClientId = process.env.KAFKA_CLIENT_ID || 'erika-back-notificaciones';
-  static readonly kafkaGroupId = process.env.KAFKA_GROUP_ID || 'erika-notificaciones-group';
+  static readonly kafkaBroker = process.env.KAFKA_BROKER;
+  static readonly kafkaClientId = process.env.KAFKA_CLIENT_ID;
+  static readonly kafkaGroupId = process.env.KAFKA_GROUP_ID;
+  static readonly pagosBaseUrl = process.env.PAGOS_BASE_URL;
+  static readonly pdfStoragePath = process.env.PDF_STORAGE_PATH;
+  static readonly projectRoot = process.env.PROJECT_ROOT;
+  static readonly pdfBaseUrl = process.env.PDF_BASE_URL;
 }

@@ -1,6 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { HttpService } from '@nestjs/axios';
 import { firstValueFrom } from 'rxjs';
+import { ServiciosUrls } from '../../infrastructure/config/servicios-urls.config';
 
 export interface IGenerarLinkPagoRequest {
   cuentaCobroId: number;
@@ -15,8 +16,6 @@ export interface IGenerarLinkPagoRequest {
 @Injectable()
 export class PagosService {
   private readonly logger = new Logger(PagosService.name);
-  private readonly pagosBaseUrl =
-    process.env.PAGOS_BASE_URL || 'http://localhost:3003';
 
   constructor(private readonly httpService: HttpService) {}
 
@@ -28,7 +27,7 @@ export class PagosService {
         `Solicitando generación de link de pago para cuenta de cobro ID: ${datos.cuentaCobroId}`,
       );
 
-      const url = `${this.pagosBaseUrl}/api/v1/pagos/generar-link-pago`;
+      const url = `${ServiciosUrls.pagosBaseUrl}/api/v1/pagos/generar-link-pago`;
 
       const respuesta = await firstValueFrom(
         this.httpService.post<{ linkPago: string }>(url, datos),

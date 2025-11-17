@@ -1,5 +1,3 @@
-import { Injectable } from '@nestjs/common';
-import { InjectModel } from '@nestjs/sequelize';
 import { Op } from 'sequelize';
 import { CuentaCobroModel } from '../models/cuenta-cobro.model';
 import { CuentaCobroServicioModel } from '../models/cuenta-cobro-servicio.model';
@@ -9,31 +7,16 @@ import { ClientePaqueteModel } from '../models/cliente-paquete.model';
 import { TenantModel } from '../models/tenant.model';
 import { Transformador } from '../../../utils/transformador.util';
 
-@Injectable()
 export class CuentaCobroRepository {
-  constructor(
-    @InjectModel(CuentaCobroModel)
-    private readonly cuentaCobroModel: typeof CuentaCobroModel,
-    @InjectModel(ClienteModel)
-    private readonly clienteModel: typeof ClienteModel,
-    @InjectModel(ClientePaqueteModel)
-    private readonly clientePaqueteModel: typeof ClientePaqueteModel,
-    @InjectModel(TenantModel)
-    private readonly tenantModel: typeof TenantModel,
-  ) {}
+  private constructor() {}
 
-  async buscarPorFechaCobroConRelaciones(
-    fechaCobro: Date,
+  static async buscarPorFechaCobroConRelaciones(
+    inicioDia: Date,
+    finDia: Date,
     limit: number,
     offset: number,
   ): Promise<{ rows: CuentaCobroModel[]; count: number }> {
-    const inicioDia = new Date(fechaCobro);
-    inicioDia.setHours(0, 0, 0, 0);
-
-    const finDia = new Date(fechaCobro);
-    finDia.setHours(23, 59, 59, 999);
-
-    const resultado = await this.cuentaCobroModel.findAndCountAll({
+    const resultado = await CuentaCobroModel.findAndCountAll({
       where: {
         fechaCobro: {
           [Op.between]: [inicioDia, finDia],
@@ -57,16 +40,13 @@ export class CuentaCobroRepository {
       paranoid: true,
     });
 
-    return {
-      rows: resultado.rows.map((row) =>
-        Transformador.extraerDataValues(row),
-      ) as CuentaCobroModel[],
-      count: resultado.count,
-    };
+    return Transformador.extraerDataValues(resultado);
   }
 
-  async buscarPorIdConRelaciones(id: number): Promise<CuentaCobroModel | null> {
-    const resultado = await this.cuentaCobroModel.findByPk(id, {
+  static async buscarPorIdConRelaciones(
+    id: number,
+  ): Promise<CuentaCobroModel | null> {
+    const resultado = await CuentaCobroModel.findByPk(id, {
       include: [
         {
           model: CuentaCobroServicioModel,
@@ -82,33 +62,22 @@ export class CuentaCobroRepository {
       paranoid: true,
     });
 
-    if (!resultado) {
-      return null;
-    }
-
-    return Transformador.extraerDataValues(resultado) as CuentaCobroModel;
+    return Transformador.extraerDataValues(resultado);
   }
 
-  async buscarClientePorId(id: number): Promise<ClienteModel | null> {
-    const resultado = await this.clienteModel.findByPk(id, {
+  static async buscarClientePorId(id: number): Promise<ClienteModel | null> {
+    const resultado = await ClienteModel.findByPk(id, {
       paranoid: true,
     });
 
-    if (!resultado) {
-      return null;
-    }
-
-    return Transformador.extraerDataValues(resultado) as ClienteModel;
+    return Transformador.extraerDataValues(resultado);
   }
 
-  async contarPorFechaCobro(fechaCobro: Date): Promise<number> {
-    const inicioDia = new Date(fechaCobro);
-    inicioDia.setHours(0, 0, 0, 0);
-
-    const finDia = new Date(fechaCobro);
-    finDia.setHours(23, 59, 59, 999);
-
-    return await this.cuentaCobroModel.count({
+  static async contarPorFechaCobro(
+    inicioDia: Date,
+    finDia: Date,
+  ): Promise<number> {
+    return await CuentaCobroModel.count({
       where: {
         fechaCobro: {
           [Op.between]: [inicioDia, finDia],
@@ -118,11 +87,11 @@ export class CuentaCobroRepository {
     });
   }
 
-  async actualizarUrlPdf(
+  static async actualizarUrlPdf(
     id: number,
     urlPdf: string,
   ): Promise<CuentaCobroModel | null> {
-    const cuentaCobro = await this.cuentaCobroModel.findByPk(id);
+    const cuentaCobro = await CuentaCobroModel.findByPk(id);
 
     if (!cuentaCobro) {
       return null;
@@ -134,11 +103,11 @@ export class CuentaCobroRepository {
     return Transformador.extraerDataValues(cuentaCobro);
   }
 
-  async actualizarLinkPago(
+  static async actualizarLinkPago(
     id: number,
     linkPago: string,
   ): Promise<CuentaCobroModel | null> {
-    const cuentaCobro = await this.cuentaCobroModel.findByPk(id);
+    const cuentaCobro = await CuentaCobroModel.findByPk(id);
 
     if (!cuentaCobro) {
       return null;
@@ -150,11 +119,11 @@ export class CuentaCobroRepository {
     return Transformador.extraerDataValues(cuentaCobro);
   }
 
-  async actualizarEnvioCorreo(
+  static async actualizarEnvioCorreo(
     id: number,
     fechaEnvio: Date,
   ): Promise<CuentaCobroModel | null> {
-    const cuentaCobro = await this.cuentaCobroModel.findByPk(id);
+    const cuentaCobro = await CuentaCobroModel.findByPk(id);
 
     if (!cuentaCobro) {
       return null;
@@ -164,13 +133,13 @@ export class CuentaCobroRepository {
     cuentaCobro.fechaEnvioCorreo = fechaEnvio;
     await cuentaCobro.save();
 
-    return Transformador.extraerDataValues(cuentaCobro) as CuentaCobroModel;
+    return Transformador.extraerDataValues(cuentaCobro);
   }
 
-  async buscarDiasGraciaPorClientePaqueteId(
+  static async buscarDiasGraciaPorClientePaqueteId(
     clientePaqueteId: number,
   ): Promise<number | null> {
-    const clientePaquete = await this.clientePaqueteModel.findByPk(
+    const clientePaquete = await ClientePaqueteModel.findByPk(
       clientePaqueteId,
       {
         attributes: ['dias_gracia'],
@@ -184,16 +153,12 @@ export class CuentaCobroRepository {
     return clientePaquete.diasGracia;
   }
 
-  async buscarTenantPorId(id: number): Promise<TenantModel | null> {
-    const tenant = await this.tenantModel.findByPk(id, {
+  static async buscarTenantPorId(id: number): Promise<TenantModel | null> {
+    const tenant = await TenantModel.findByPk(id, {
       attributes: ['id', 'nombre'],
       paranoid: true,
     });
 
-    if (!tenant) {
-      return null;
-    }
-
-    return Transformador.extraerDataValues(tenant) as TenantModel;
+    return Transformador.extraerDataValues(tenant);
   }
 }

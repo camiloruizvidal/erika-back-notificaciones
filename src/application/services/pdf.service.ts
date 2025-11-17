@@ -4,6 +4,7 @@ import * as path from 'path';
 import * as mammoth from 'mammoth';
 import puppeteer from 'puppeteer';
 import * as moment from 'moment-timezone';
+import { Config } from '../../infrastructure/config/config';
 import { CuentaCobroModel } from '../../infrastructure/persistence/models/cuenta-cobro.model';
 import { ClienteModel } from '../../infrastructure/persistence/models/cliente.model';
 import { PlantillaModel } from '../../infrastructure/persistence/models/plantilla.model';
@@ -13,10 +14,10 @@ import { CuentaCobroRepository } from '../../infrastructure/persistence/reposito
 @Injectable()
 export class PdfService {
   private readonly logger = new Logger(PdfService.name);
-  private readonly directorioPdfs = process.env.PDF_STORAGE_PATH || './storage/pdfs';
-  private readonly directorioBaseProyecto = process.env.PROJECT_ROOT || path.resolve(__dirname, '../../../..');
-
-  constructor(private readonly cuentaCobroRepository: CuentaCobroRepository) {}
+  private readonly directorioPdfs = Config.pdfStoragePath;
+  private readonly directorioBaseProyecto = Config.projectRoot
+    ? Config.projectRoot
+    : path.resolve(__dirname, '../../../..');
 
   async generarPdf(
     cuentaCobro: CuentaCobroModel,
@@ -37,7 +38,7 @@ export class PdfService {
 
       const rutaCompleta = path.join(this.directorioPdfs, nombreArchivo);
 
-      const tenant = await this.cuentaCobroRepository.buscarTenantPorId(cuentaCobro.tenantId);
+      const tenant = await CuentaCobroRepository.buscarTenantPorId(cuentaCobro.tenantId);
 
       let htmlContent: string;
 
@@ -89,7 +90,7 @@ export class PdfService {
   }
 
   private generarUrlPdf(nombreArchivo: string): string {
-    const baseUrl = process.env.PDF_BASE_URL || 'https://storage.erika.com/cuentas-cobro';
+    const baseUrl = Config.pdfBaseUrl;
     return `${baseUrl}/${nombreArchivo}`;
   }
 
