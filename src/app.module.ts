@@ -1,4 +1,5 @@
 import { Module } from '@nestjs/common';
+import { HttpModule } from '@nestjs/axios';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { DatabaseModule } from './infrastructure/persistence/database/database.module';
@@ -8,10 +9,11 @@ import { CorreosConsumerService } from './application/services/correos-consumer.
 import { NotificacionesController } from './presentation/controllers/notificaciones.controller';
 import { NotificacionesService } from './application/services/notificaciones.service';
 import { PdfService } from './application/services/pdf.service';
+import { WoompiService } from './application/services/woompi.service';
 import { ManejadorError } from './utils/manejador-error/manejador-error';
 
 @Module({
-  imports: [DatabaseModule, KafkaModule],
+  imports: [DatabaseModule, KafkaModule, HttpModule],
   controllers: [AppController, NotificacionesController],
   providers: [
     AppService,
@@ -19,6 +21,7 @@ import { ManejadorError } from './utils/manejador-error/manejador-error';
     CorreosConsumerService,
     NotificacionesService,
     PdfService,
+    WoompiService,
     ManejadorError,
   ],
 })

@@ -2,8 +2,10 @@ import { Injectable, Logger } from '@nestjs/common';
 import { CuentaCobroRepository } from '../../infrastructure/persistence/repositories/cuenta-cobro.repository';
 import { PlantillaRepository } from '../../infrastructure/persistence/repositories/plantilla.repository';
 import { PdfService } from './pdf.service';
+import { WoompiService } from './woompi.service';
 import { CuentaCobroModel } from '../../infrastructure/persistence/models/cuenta-cobro.model';
 import { ClienteModel } from '../../infrastructure/persistence/models/cliente.model';
+import * as moment from 'moment-timezone';
 
 export interface IEnviarCorreoRequest {
   destinatario: string;
@@ -20,6 +22,7 @@ export class NotificacionesService {
     private readonly cuentaCobroRepository: CuentaCobroRepository,
     private readonly plantillaRepository: PlantillaRepository,
     private readonly pdfService: PdfService,
+    private readonly woompiService: WoompiService,
   ) {}
 
   async enviarCorreo(datos: IEnviarCorreoRequest): Promise<void> {
@@ -31,6 +34,82 @@ export class NotificacionesService {
       this.logger.log(`Correo enviado exitosamente a: ${datos.destinatario}`);
     } catch (error) {
       this.logger.error(`Error al enviar correo a ${datos.destinatario}:`, error);
+      throw error;
+    }
+  }
+
+  async generarPdfPorId(cuentaCobroId: number): Promise<string> {
+    try {
+      this.logger.log(`Generando PDF de prueba para cuenta de cobro ID: ${cuentaCobroId}`);
+
+      const cuentaCobro = await this.cuentaCobroRepository.buscarPorIdConRelaciones(
+        cuentaCobroId,
+      );
+
+      if (!cuentaCobro) {
+        throw new Error(`No se encontró cuenta de cobro con ID ${cuentaCobroId}`);
+      }
+
+      const cliente = await this.cuentaCobroRepository.buscarClientePorId(
+        cuentaCobro.clienteId,
+      );
+
+      if (!cliente) {
+        throw new Error(`No se encontró cliente con ID ${cuentaCobro.clienteId}`);
+      }
+
+      const plantilla = await this.plantillaRepository.buscarPorTenantYTipo(
+        cuentaCobro.tenantId,
+        'cuenta_cobro',
+      );
+
+      if (!plantilla) {
+        throw new Error(
+          `No se encontró plantilla para tenant ${cuentaCobro.tenantId} tipo cuenta_cobro`,
+        );
+      }
+
+      const diasGracia = await this.cuentaCobroRepository.buscarDiasGraciaPorClientePaqueteId(
+        cuentaCobro.clientePaqueteId,
+      );
+
+      const fechaLimitePago = this.calcularFechaLimitePago(cuentaCobro.fechaCobro, diasGracia);
+
+      let linkPago = cuentaCobro.linkPago;
+
+      if (!linkPago) {
+        this.logger.log(
+          `Generando link de pago Woompi para cuenta de cobro ID: ${cuentaCobro.id}`,
+        );
+
+        linkPago = await this.woompiService.generarLinkPago({
+          cuentaCobroId: cuentaCobro.id,
+          valorTotal: Number(cuentaCobro.valorTotal),
+          referencia: `CC-${cuentaCobro.id}`,
+          descripcion: `Cuenta de cobro #${cuentaCobro.id}`,
+          correoCliente: cliente.correo,
+          nombreCliente: cliente.nombreCompleto,
+          fechaLimitePago,
+        });
+
+        await this.cuentaCobroRepository.actualizarLinkPago(cuentaCobro.id, linkPago);
+      }
+
+      const urlPdf = await this.pdfService.generarPdf(
+        cuentaCobro,
+        cliente,
+        plantilla,
+        linkPago,
+        fechaLimitePago,
+      );
+
+      await this.cuentaCobroRepository.actualizarUrlPdf(cuentaCobro.id, urlPdf);
+
+      this.logger.log(`PDF de prueba generado exitosamente: ${urlPdf}`);
+
+      return urlPdf;
+    } catch (error) {
+      this.logger.error(`Error al generar PDF de prueba para cuenta de cobro ${cuentaCobroId}:`, error);
       throw error;
     }
   }
@@ -95,10 +174,38 @@ export class NotificacionesService {
             continue;
           }
 
+          const diasGracia = await this.cuentaCobroRepository.buscarDiasGraciaPorClientePaqueteId(
+            cuentaCobro.clientePaqueteId,
+          );
+
+          const fechaLimitePago = this.calcularFechaLimitePago(cuentaCobro.fechaCobro, diasGracia);
+
+          let linkPago = cuentaCobro.linkPago;
+
+          if (!linkPago) {
+            this.logger.log(
+              `Generando link de pago Woompi para cuenta de cobro ID: ${cuentaCobro.id}`,
+            );
+
+            linkPago = await this.woompiService.generarLinkPago({
+              cuentaCobroId: cuentaCobro.id,
+              valorTotal: Number(cuentaCobro.valorTotal),
+              referencia: `CC-${cuentaCobro.id}`,
+              descripcion: `Cuenta de cobro #${cuentaCobro.id}`,
+              correoCliente: cliente.correo,
+              nombreCliente: cliente.nombreCompleto,
+              fechaLimitePago,
+            });
+
+            await this.cuentaCobroRepository.actualizarLinkPago(cuentaCobro.id, linkPago);
+          }
+
           const urlPdf = await this.pdfService.generarPdf(
             cuentaCobro,
             cliente,
             plantilla,
+            linkPago,
+            fechaLimitePago,
           );
 
           await this.cuentaCobroRepository.actualizarUrlPdf(cuentaCobro.id, urlPdf);

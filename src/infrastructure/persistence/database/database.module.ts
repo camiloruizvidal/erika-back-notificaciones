@@ -5,6 +5,8 @@ import { CuentaCobroModel } from '../models/cuenta-cobro.model';
 import { CuentaCobroServicioModel } from '../models/cuenta-cobro-servicio.model';
 import { ConceptoAdicionalModel } from '../models/concepto-adicional.model';
 import { ClienteModel } from '../models/cliente.model';
+import { ClientePaqueteModel } from '../models/cliente-paquete.model';
+import { TenantModel } from '../models/tenant.model';
 import { PlantillaModel } from '../models/plantilla.model';
 import { CuentaCobroRepository } from '../repositories/cuenta-cobro.repository';
 import { PlantillaRepository } from '../repositories/plantilla.repository';
@@ -23,6 +25,8 @@ import { PlantillaRepository } from '../repositories/plantilla.repository';
         CuentaCobroServicioModel,
         ConceptoAdicionalModel,
         ClienteModel,
+        ClientePaqueteModel,
+        TenantModel,
         PlantillaModel,
       ],
       logging: Config.dbLogging,
@@ -35,6 +39,8 @@ import { PlantillaRepository } from '../repositories/plantilla.repository';
       CuentaCobroServicioModel,
       ConceptoAdicionalModel,
       ClienteModel,
+      ClientePaqueteModel,
+      TenantModel,
       PlantillaModel,
     ]),
   ],

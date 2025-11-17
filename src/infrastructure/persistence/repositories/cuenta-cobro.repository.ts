@@ -5,6 +5,8 @@ import { CuentaCobroModel } from '../models/cuenta-cobro.model';
 import { CuentaCobroServicioModel } from '../models/cuenta-cobro-servicio.model';
 import { ClienteModel } from '../models/cliente.model';
 import { ConceptoAdicionalModel } from '../models/concepto-adicional.model';
+import { ClientePaqueteModel } from '../models/cliente-paquete.model';
+import { TenantModel } from '../models/tenant.model';
 import { Transformador } from '../../../utils/transformador.util';
 
 @Injectable()
@@ -14,6 +16,10 @@ export class CuentaCobroRepository {
     private readonly cuentaCobroModel: typeof CuentaCobroModel,
     @InjectModel(ClienteModel)
     private readonly clienteModel: typeof ClienteModel,
+    @InjectModel(ClientePaqueteModel)
+    private readonly clientePaqueteModel: typeof ClientePaqueteModel,
+    @InjectModel(TenantModel)
+    private readonly tenantModel: typeof TenantModel,
   ) {}
 
   async buscarPorFechaCobroConRelaciones(
@@ -125,7 +131,23 @@ export class CuentaCobroRepository {
     cuentaCobro.urlPdf = urlPdf;
     await cuentaCobro.save();
 
-    return Transformador.extraerDataValues(cuentaCobro) as CuentaCobroModel;
+    return Transformador.extraerDataValues(cuentaCobro);
+  }
+
+  async actualizarLinkPago(
+    id: number,
+    linkPago: string,
+  ): Promise<CuentaCobroModel | null> {
+    const cuentaCobro = await this.cuentaCobroModel.findByPk(id);
+
+    if (!cuentaCobro) {
+      return null;
+    }
+
+    cuentaCobro.linkPago = linkPago;
+    await cuentaCobro.save();
+
+    return Transformador.extraerDataValues(cuentaCobro);
   }
 
   async actualizarEnvioCorreo(
@@ -144,5 +166,34 @@ export class CuentaCobroRepository {
 
     return Transformador.extraerDataValues(cuentaCobro) as CuentaCobroModel;
   }
-}
 
+  async buscarDiasGraciaPorClientePaqueteId(
+    clientePaqueteId: number,
+  ): Promise<number | null> {
+    const clientePaquete = await this.clientePaqueteModel.findByPk(
+      clientePaqueteId,
+      {
+        attributes: ['dias_gracia'],
+      },
+    );
+
+    if (!clientePaquete) {
+      return null;
+    }
+
+    return clientePaquete.diasGracia;
+  }
+
+  async buscarTenantPorId(id: number): Promise<TenantModel | null> {
+    const tenant = await this.tenantModel.findByPk(id, {
+      attributes: ['id', 'nombre'],
+      paranoid: true,
+    });
+
+    if (!tenant) {
+      return null;
+    }
+
+    return Transformador.extraerDataValues(tenant) as TenantModel;
+  }
+}

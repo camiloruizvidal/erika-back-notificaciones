@@ -1,19 +1,29 @@
 import { Injectable, Logger } from '@nestjs/common';
 import * as fs from 'fs/promises';
 import * as path from 'path';
+import * as mammoth from 'mammoth';
+import puppeteer from 'puppeteer';
+import * as moment from 'moment-timezone';
 import { CuentaCobroModel } from '../../infrastructure/persistence/models/cuenta-cobro.model';
 import { ClienteModel } from '../../infrastructure/persistence/models/cliente.model';
 import { PlantillaModel } from '../../infrastructure/persistence/models/plantilla.model';
+import { TenantModel } from '../../infrastructure/persistence/models/tenant.model';
+import { CuentaCobroRepository } from '../../infrastructure/persistence/repositories/cuenta-cobro.repository';
 
 @Injectable()
 export class PdfService {
   private readonly logger = new Logger(PdfService.name);
   private readonly directorioPdfs = process.env.PDF_STORAGE_PATH || './storage/pdfs';
+  private readonly directorioBaseProyecto = process.env.PROJECT_ROOT || path.resolve(__dirname, '../../../..');
+
+  constructor(private readonly cuentaCobroRepository: CuentaCobroRepository) {}
 
   async generarPdf(
     cuentaCobro: CuentaCobroModel,
     cliente: ClienteModel,
     plantilla: PlantillaModel,
+    linkPago: string,
+    fechaLimitePago: Date,
   ): Promise<string> {
     try {
       this.logger.log(`Generando PDF para cuenta de cobro ID: ${cuentaCobro.id}`);
@@ -21,25 +31,39 @@ export class PdfService {
       await this.asegurarDirectorio();
 
       const nombreArchivo = this.generarNombreArchivo(
-        cuentaCobro.tenantId,
-        cuentaCobro.fechaCobro,
         cuentaCobro.id,
+        cliente.identificacion || '',
       );
 
       const rutaCompleta = path.join(this.directorioPdfs, nombreArchivo);
 
+      const tenant = await this.cuentaCobroRepository.buscarTenantPorId(cuentaCobro.tenantId);
+
+      let htmlContent: string;
+
       if (plantilla.rutaPdf) {
-        await this.copiarDesdeRuta(plantilla.rutaPdf, rutaCompleta, cuentaCobro, cliente);
-      } else if (plantilla.plantillaPdf) {
-        await this.generarDesdeBuffer(
-          plantilla.plantillaPdf,
-          rutaCompleta,
+        htmlContent = await this.procesarPlantillaDesdeRuta(
+          plantilla.rutaPdf,
           cuentaCobro,
           cliente,
+          tenant,
+          fechaLimitePago,
+          linkPago,
+        );
+      } else if (plantilla.plantillaPdf) {
+        htmlContent = await this.procesarPlantillaDesdeBuffer(
+          plantilla.plantillaPdf,
+          cuentaCobro,
+          cliente,
+          tenant,
+          fechaLimitePago,
+          linkPago,
         );
       } else {
         throw new Error('No se encontró plantilla PDF válida');
       }
+
+      await this.convertirHtmlAPdf(htmlContent, rutaCompleta);
 
       const urlPdf = this.generarUrlPdf(nombreArchivo);
 
@@ -60,14 +84,8 @@ export class PdfService {
     }
   }
 
-  private generarNombreArchivo(
-    tenantId: number,
-    fechaCobro: Date,
-    cuentaCobroId: number,
-  ): string {
-    const fecha = new Date(fechaCobro);
-    const fechaStr = fecha.toISOString().split('T')[0];
-    return `cuenta-cobro-${tenantId}-${fechaStr}-${cuentaCobroId}.pdf`;
+  private generarNombreArchivo(cuentaCobroId: number, identificacionCliente: string): string {
+    return `${cuentaCobroId}_${identificacionCliente}.pdf`;
   }
 
   private generarUrlPdf(nombreArchivo: string): string {
@@ -75,97 +93,107 @@ export class PdfService {
     return `${baseUrl}/${nombreArchivo}`;
   }
 
-  private async copiarDesdeRuta(
+
+  private async procesarPlantillaDesdeRuta(
     rutaPlantilla: string,
-    rutaDestino: string,
     cuentaCobro: CuentaCobroModel,
     cliente: ClienteModel,
-  ): Promise<void> {
-    const contenido = await this.procesarPlantilla(rutaPlantilla, cuentaCobro, cliente);
-    await fs.writeFile(rutaDestino, contenido);
+    tenant: TenantModel | null,
+    fechaLimitePago: Date,
+    linkPago: string,
+  ): Promise<string> {
+    const rutaAbsoluta = this.resolverRutaPlantilla(rutaPlantilla);
+    const buffer = await fs.readFile(rutaAbsoluta);
+    return await this.procesarPlantillaDesdeBuffer(
+      buffer,
+      cuentaCobro,
+      cliente,
+      tenant,
+      fechaLimitePago,
+      linkPago,
+    );
   }
 
-  private async generarDesdeBuffer(
+  private async procesarPlantillaDesdeBuffer(
     buffer: Buffer,
-    rutaDestino: string,
     cuentaCobro: CuentaCobroModel,
     cliente: ClienteModel,
-  ): Promise<void> {
-    const contenido = await this.procesarPlantilla(buffer, cuentaCobro, cliente);
-    await fs.writeFile(rutaDestino, contenido);
+    tenant: TenantModel | null,
+    fechaLimitePago: Date,
+    linkPago: string,
+  ): Promise<string> {
+    const resultado = await mammoth.convertToHtml({ buffer });
+    const html = resultado.value;
+    return this.reemplazarVariables(
+      html,
+      cuentaCobro,
+      cliente,
+      tenant,
+      fechaLimitePago,
+      linkPago,
+    );
   }
 
-  private async procesarPlantilla(
-    plantilla: string | Buffer,
-    cuentaCobro: CuentaCobroModel,
-    cliente: ClienteModel,
-  ): Promise<Buffer> {
-    let contenido: string;
-
-    if (Buffer.isBuffer(plantilla)) {
-      contenido = plantilla.toString('utf-8');
-    } else {
-      const archivo = await fs.readFile(plantilla, 'utf-8');
-      contenido = archivo;
+  private resolverRutaPlantilla(rutaRelativa: string): string {
+    if (path.isAbsolute(rutaRelativa)) {
+      return rutaRelativa;
     }
+    return path.join(this.directorioBaseProyecto, rutaRelativa);
+  }
 
-    const contenidoProcesado = this.reemplazarVariables(contenido, cuentaCobro, cliente);
+  private async convertirHtmlAPdf(htmlContent: string, rutaDestino: string): Promise<void> {
+    const browser = await puppeteer.launch({
+      headless: true,
+      args: ['--no-sandbox', '--disable-setuid-sandbox'],
+    });
 
-    return Buffer.from(contenidoProcesado, 'utf-8');
+    try {
+      const page = await browser.newPage();
+      await page.setContent(htmlContent, { waitUntil: 'networkidle0' });
+      await page.pdf({
+        path: rutaDestino,
+        format: 'A4',
+        printBackground: true,
+        margin: {
+          top: '20mm',
+          right: '15mm',
+          bottom: '20mm',
+          left: '15mm',
+        },
+      });
+    } finally {
+      await browser.close();
+    }
   }
 
   private reemplazarVariables(
     contenido: string,
     cuentaCobro: CuentaCobroModel,
     cliente: ClienteModel,
+    tenant: TenantModel | null,
+    fechaLimitePago: Date,
+    linkPago: string,
   ): string {
     let resultado = contenido;
 
-    resultado = resultado.replace(/\{\{cliente\.nombre\}\}/g, cliente.nombreCompleto);
-    resultado = resultado.replace(/\{\{cliente\.correo\}\}/g, cliente.correo);
-    resultado = resultado.replace(/\{\{cliente\.identificacion\}\}/g, cliente.identificacion || '');
-    resultado = resultado.replace(/\{\{cliente\.direccion\}\}/g, cliente.direccion || '');
+    resultado = resultado.replace(/\{cliente\.primer_nombre\}/g, cliente.primerNombre || '');
+    resultado = resultado.replace(/\{cliente\.primer_apellido\}/g, cliente.primerApellido || '');
+    resultado = resultado.replace(/\{empresa\.nombre\}/g, tenant?.nombre || '');
 
-    resultado = resultado.replace(/\{\{cuentaCobro\.id\}\}/g, cuentaCobro.id.toString());
-    resultado = resultado.replace(
-      /\{\{cuentaCobro\.fechaCobro\}\}/g,
-      new Date(cuentaCobro.fechaCobro).toLocaleDateString('es-CO'),
-    );
-    resultado = resultado.replace(
-      /\{\{cuentaCobro\.valorTotal\}\}/g,
-      cuentaCobro.valorTotal.toString(),
-    );
-    resultado = resultado.replace(
-      /\{\{cuentaCobro\.valorPaquete\}\}/g,
-      cuentaCobro.valorPaquete.toString(),
-    );
-    resultado = resultado.replace(
-      /\{\{cuentaCobro\.valorConceptosAdicionales\}\}/g,
-      cuentaCobro.valorConceptosAdicionales.toString(),
-    );
+    const valorTotalFormateado = new Intl.NumberFormat('es-CO', {
+      style: 'currency',
+      currency: 'COP',
+    }).format(Number(cuentaCobro.valorTotal));
 
-    if (cuentaCobro.servicios) {
-      let serviciosHtml = '';
-      cuentaCobro.servicios.forEach((servicio) => {
-        serviciosHtml += `<tr>
-          <td>${servicio.nombreServicio}</td>
-          <td>${servicio.valorOriginal}</td>
-          <td>${servicio.valorAcordado}</td>
-        </tr>`;
-      });
-      resultado = resultado.replace(/\{\{servicios\}\}/g, serviciosHtml);
-    }
+    resultado = resultado.replace(/\$\{cuenta\.valor_total\}/g, valorTotalFormateado);
+    resultado = resultado.replace(/\{cuenta\.valor_total\}/g, valorTotalFormateado);
 
-    if (cuentaCobro.conceptosAdicionales && cuentaCobro.conceptosAdicionales.length > 0) {
-      let conceptosHtml = '';
-      cuentaCobro.conceptosAdicionales.forEach((concepto) => {
-        conceptosHtml += `<tr>
-          <td>${concepto.concepto}</td>
-          <td>${concepto.valor}</td>
-        </tr>`;
-      });
-      resultado = resultado.replace(/\{\{conceptosAdicionales\}\}/g, conceptosHtml);
-    }
+    const fechaLimiteFormateada = moment
+      .tz(fechaLimitePago, 'America/Bogota')
+      .format('DD [de] MMMM [de] YYYY');
+
+    resultado = resultado.replace(/\{cuenta\.fecha_limite_pago\}/g, fechaLimiteFormateada);
+    resultado = resultado.replace(/\{cuenta\.link_pago\}/g, linkPago);
 
     return resultado;
   }
