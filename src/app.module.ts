@@ -1,10 +1,25 @@
 import { Module } from '@nestjs/common';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
+import { DatabaseModule } from './infrastructure/persistence/database/database.module';
+import { KafkaModule } from './infrastructure/messaging/kafka/kafka.module';
+import { CuentasCobroConsumerService } from './application/services/cuentas-cobro-consumer.service';
+import { CorreosConsumerService } from './application/services/correos-consumer.service';
+import { NotificacionesController } from './presentation/controllers/notificaciones.controller';
+import { NotificacionesService } from './application/services/notificaciones.service';
+import { PdfService } from './application/services/pdf.service';
+import { ManejadorError } from './utils/manejador-error/manejador-error';
 
 @Module({
-  imports: [],
-  controllers: [AppController],
-  providers: [AppService],
+  imports: [DatabaseModule, KafkaModule],
+  controllers: [AppController, NotificacionesController],
+  providers: [
+    AppService,
+    CuentasCobroConsumerService,
+    CorreosConsumerService,
+    NotificacionesService,
+    PdfService,
+    ManejadorError,
+  ],
 })
 export class AppModule {}
