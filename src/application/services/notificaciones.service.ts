@@ -2,7 +2,7 @@ import { Injectable, Logger } from '@nestjs/common';
 import { CuentaCobroRepository } from '../../infrastructure/persistence/repositories/cuenta-cobro.repository';
 import { PlantillaRepository } from '../../infrastructure/persistence/repositories/plantilla.repository';
 import { PdfService } from './pdf.service';
-import { WoompiService } from './woompi.service';
+import { PagosService } from './pagos.service';
 import { CuentaCobroModel } from '../../infrastructure/persistence/models/cuenta-cobro.model';
 import { ClienteModel } from '../../infrastructure/persistence/models/cliente.model';
 import * as moment from 'moment-timezone';
@@ -22,7 +22,7 @@ export class NotificacionesService {
     private readonly cuentaCobroRepository: CuentaCobroRepository,
     private readonly plantillaRepository: PlantillaRepository,
     private readonly pdfService: PdfService,
-    private readonly woompiService: WoompiService,
+    private readonly pagosService: PagosService,
   ) {}
 
   async enviarCorreo(datos: IEnviarCorreoRequest): Promise<void> {
@@ -187,7 +187,7 @@ export class NotificacionesService {
               `Generando link de pago Woompi para cuenta de cobro ID: ${cuentaCobro.id}`,
             );
 
-            linkPago = await this.woompiService.generarLinkPago({
+            linkPago = await this.pagosService.generarLinkPago({
               cuentaCobroId: cuentaCobro.id,
               valorTotal: Number(cuentaCobro.valorTotal),
               referencia: `CC-${cuentaCobro.id}`,

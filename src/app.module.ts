@@ -9,7 +9,7 @@ import { CorreosConsumerService } from './application/services/correos-consumer.
 import { NotificacionesController } from './presentation/controllers/notificaciones.controller';
 import { NotificacionesService } from './application/services/notificaciones.service';
 import { PdfService } from './application/services/pdf.service';
-import { WoompiService } from './application/services/woompi.service';
+import { PagosService } from './application/services/pagos.service';
 import { ManejadorError } from './utils/manejador-error/manejador-error';
 
 @Module({
@@ -21,7 +21,7 @@ import { ManejadorError } from './utils/manejador-error/manejador-error';
     CorreosConsumerService,
     NotificacionesService,
     PdfService,
-    WoompiService,
+    PagosService,
     ManejadorError,
   ],
 })
