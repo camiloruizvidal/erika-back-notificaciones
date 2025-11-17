@@ -14,8 +14,8 @@ import { CuentaCobroRepository } from '../../infrastructure/persistence/reposito
 @Injectable()
 export class PdfService {
   private readonly logger = new Logger(PdfService.name);
-  private readonly directorioPdfs = Config.pdfStoragePath;
-  private readonly directorioBaseProyecto = Config.projectRoot
+  private readonly directorioPdfs: string = Config.pdfStoragePath;
+  private readonly directorioBaseProyecto: string = Config.projectRoot
     ? Config.projectRoot
     : path.resolve(__dirname, '../../../..');
 

@@ -4,7 +4,13 @@ import {
   OnModuleInit,
   OnModuleDestroy,
 } from '@nestjs/common';
-import { Kafka, Consumer, KafkaConfig, EachMessagePayload } from 'kafkajs';
+import {
+  Kafka,
+  Consumer,
+  KafkaConfig,
+  EachMessagePayload,
+  Producer,
+} from 'kafkajs';
 import { Config } from '../../config/config';
 
 @Injectable()
@@ -79,7 +85,7 @@ export class KafkaService implements OnModuleInit, OnModuleDestroy {
     }
   }
 
-  async crearProducer(): Promise<Kafka['producer']> {
+  async crearProducer(): Promise<Producer> {
     const producer = this.kafka.producer();
     await producer.connect();
     this.logger.log('Kafka producer creado y conectado');
@@ -87,9 +93,9 @@ export class KafkaService implements OnModuleInit, OnModuleDestroy {
   }
 
   async enviarMensaje(
-    producer: ReturnType<Kafka['producer']>,
+    producer: Producer,
     topic: string,
-    mensaje: Record<string, unknown>,
+    mensaje: Record<string, unknown> | object,
   ): Promise<void> {
     try {
       await producer.send({

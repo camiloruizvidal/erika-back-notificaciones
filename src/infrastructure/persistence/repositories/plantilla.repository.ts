@@ -1,20 +1,14 @@
-import { Injectable } from '@nestjs/common';
-import { InjectModel } from '@nestjs/sequelize';
 import { PlantillaModel } from '../models/plantilla.model';
 import { Transformador } from '../../../utils/transformador.util';
 
-@Injectable()
 export class PlantillaRepository {
-  constructor(
-    @InjectModel(PlantillaModel)
-    private readonly plantillaModel: typeof PlantillaModel,
-  ) {}
+  private constructor() {}
 
-  async buscarPorTenantYTipo(
+  static async buscarPorTenantYTipo(
     tenantId: number,
     tipo: string,
   ): Promise<PlantillaModel | null> {
-    const resultado = await this.plantillaModel.findOne({
+    const resultado = await PlantillaModel.findOne({
       where: {
         tenantId,
         tipo,
@@ -27,7 +21,6 @@ export class PlantillaRepository {
       return null;
     }
 
-    return Transformador.extraerDataValues(resultado) as PlantillaModel;
+    return Transformador.extraerDataValues(resultado);
   }
 }
-

@@ -11,7 +11,7 @@ export interface IEnviarCorreoRequest {
   destinatario: string;
   asunto: string;
   cuerpoHtml: string;
-  urlPdf: string;
+  urlPdf?: string;
 }
 
 @Injectable()
@@ -19,7 +19,6 @@ export class NotificacionesService {
   private readonly logger = new Logger(NotificacionesService.name);
 
   constructor(
-    private readonly plantillaRepository: PlantillaRepository,
     private readonly pdfService: PdfService,
     private readonly pagosService: PagosService,
   ) {}
@@ -65,7 +64,7 @@ export class NotificacionesService {
         );
       }
 
-      const plantilla = await this.plantillaRepository.buscarPorTenantYTipo(
+      const plantilla = await PlantillaRepository.buscarPorTenantYTipo(
         cuentaCobro.tenantId,
         'cuenta_cobro',
       );
@@ -146,7 +145,7 @@ export class NotificacionesService {
     let tieneMasRegistros = true;
 
     this.logger.log(
-      `Iniciando generación de PDFs por batches de ${batchSize} para fecha: ${fechaCobro}`,
+      `Iniciando generación de PDFs por batches de ${batchSize} para fecha: ${fechaCobro.toISOString()}`,
     );
 
     const inicioDia = moment.utc(fechaCobro).startOf('day').toDate();
@@ -159,6 +158,7 @@ export class NotificacionesService {
           finDia,
           batchSize,
           offset,
+          true, // soloSinPdf = true: trae solo las cuentas que no tienen PDF
         );
 
       if (resultado.rows.length === 0) {
@@ -167,18 +167,11 @@ export class NotificacionesService {
       }
 
       this.logger.log(
-        `Procesando batch: ${offset} - ${offset + resultado.rows.length} de ${resultado.count}`,
+        `Procesando batch: ${offset} - ${offset + resultado.rows.length} de ${resultado.count} cuentas de cobro sin PDF`,
       );
 
       for (const cuentaCobro of resultado.rows) {
         try {
-          if (cuentaCobro.urlPdf) {
-            this.logger.log(
-              `La cuenta de cobro ${cuentaCobro.id} ya tiene PDF generado, omitiendo`,
-            );
-            continue;
-          }
-
           const cliente = await CuentaCobroRepository.buscarClientePorId(
             cuentaCobro.clienteId,
           );
@@ -190,7 +183,7 @@ export class NotificacionesService {
             continue;
           }
 
-          const plantilla = await this.plantillaRepository.buscarPorTenantYTipo(
+          const plantilla = await PlantillaRepository.buscarPorTenantYTipo(
             cuentaCobro.tenantId,
             'cuenta_cobro',
           );
@@ -281,7 +274,7 @@ export class NotificacionesService {
     let tieneMasRegistros = true;
 
     this.logger.log(
-      `Iniciando envío de correos por batches de ${batchSize} para fecha: ${fechaCobro}`,
+      `Iniciando envío de correos por batches de ${batchSize} para fecha: ${fechaCobro.toISOString()}`,
     );
 
     const inicioDia = moment.utc(fechaCobro).startOf('day').toDate();
@@ -294,6 +287,7 @@ export class NotificacionesService {
           finDia,
           batchSize,
           offset,
+          false, // soloSinPdf = false: trae todas, luego filtra por siEnvioCorreo
         );
 
       if (resultado.rows.length === 0) {
@@ -327,7 +321,7 @@ export class NotificacionesService {
             continue;
           }
 
-          const plantilla = await this.plantillaRepository.buscarPorTenantYTipo(
+          const plantilla = await PlantillaRepository.buscarPorTenantYTipo(
             cuentaCobro.tenantId,
             'cuenta_cobro',
           );
@@ -425,5 +419,6 @@ export class NotificacionesService {
 
     // TODO: Integrar con servicio de correo (SendGrid, SES, etc.)
     // Por ahora solo logueamos
+    await Promise.resolve();
   }
 }

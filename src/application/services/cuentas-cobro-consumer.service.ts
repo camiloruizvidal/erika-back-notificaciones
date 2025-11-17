@@ -66,7 +66,10 @@ export class CuentasCobroConsumerService implements OnModuleInit {
         `Evento pdfs_cuentas_cobro_generados publicado. Total: ${cantidadPdfsGenerados}`,
       );
     } catch (error) {
-      this.logger.error('Error al procesar mensaje de generación completada:', error);
+      this.logger.error(
+        'Error al procesar mensaje de generación completada:',
+        error,
+      );
       throw error;
     }
   }

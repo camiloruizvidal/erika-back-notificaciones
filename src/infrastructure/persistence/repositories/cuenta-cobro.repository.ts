@@ -15,13 +15,23 @@ export class CuentaCobroRepository {
     finDia: Date,
     limit: number,
     offset: number,
+    soloSinPdf: boolean = true,
   ): Promise<{ rows: CuentaCobroModel[]; count: number }> {
-    const resultado = await CuentaCobroModel.findAndCountAll({
-      where: {
-        fechaCobro: {
-          [Op.between]: [inicioDia, finDia],
-        },
+    const where: {
+      fechaCobro: { [Op.between]: Date[] };
+      urlPdf?: null;
+    } = {
+      fechaCobro: {
+        [Op.between]: [inicioDia, finDia],
       },
+    };
+
+    if (soloSinPdf) {
+      where.urlPdf = null;
+    }
+
+    const resultado = await CuentaCobroModel.findAndCountAll({
+      where,
       include: [
         {
           model: CuentaCobroServicioModel,
