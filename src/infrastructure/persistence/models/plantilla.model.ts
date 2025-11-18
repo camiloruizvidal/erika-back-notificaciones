@@ -36,8 +36,8 @@ export class PlantillaModel extends Model {
   plantillaCorreo!: string;
 
   @AllowNull(true)
-  @Column({ type: DataType.BLOB, field: 'plantilla_pdf' })
-  plantillaPdf!: Buffer | null;
+  @Column({ type: DataType.TEXT, field: 'plantilla_pdf' })
+  plantillaPdf!: string | null;
 
   @AllowNull(true)
   @Column({ type: DataType.STRING(500), field: 'ruta_pdf' })

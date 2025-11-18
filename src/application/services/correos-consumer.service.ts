@@ -47,7 +47,13 @@ export class CorreosConsumerService implements OnModuleInit {
         `Envío de correos completado. Total enviados: ${cantidadCorreosEnviados}`,
       );
     } catch (error) {
-      this.logger.error('Error al procesar mensaje de PDFs generados:', error);
+      const mensajeError =
+        (error as any)?.response?.data?.message ||
+        (error as any)?.message ||
+        'Error desconocido';
+      this.logger.error(
+        `Error al procesar mensaje de PDFs generados: ${mensajeError}`,
+      );
       throw error;
     }
   }

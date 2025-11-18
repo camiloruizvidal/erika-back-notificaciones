@@ -39,9 +39,12 @@ export class PagosService {
 
       return respuesta.data.linkPago;
     } catch (error) {
+      const mensajeError =
+        (error as any)?.response?.data?.message ||
+        (error as any)?.message ||
+        'Error desconocido';
       this.logger.error(
-        `Error al solicitar generación de link de pago para cuenta de cobro ${datos.cuentaCobroId}:`,
-        error,
+        `Error al solicitar generación de link de pago para cuenta de cobro ${datos.cuentaCobroId}: ${mensajeError}`,
       );
       throw error;
     }

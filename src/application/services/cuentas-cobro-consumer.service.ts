@@ -30,6 +30,12 @@ export class CuentasCobroConsumerService implements OnModuleInit {
   private async procesarGeneracionCompletada(
     payload: EachMessagePayload,
   ): Promise<void> {
+    this.logger.log('=== MENSAJE KAFKA RECIBIDO EN NOTIFICACIONES ===');
+    this.logger.log(`Topic: generacion_cuentas_cobro_completada`);
+    this.logger.log(`Partition: ${payload.partition}`);
+    this.logger.log(`Offset: ${payload.message.offset}`);
+    this.logger.log(`Value: ${payload.message.value?.toString()}`);
+
     try {
       const mensaje = JSON.parse(
         payload.message.value?.toString() || '{}',
@@ -66,9 +72,12 @@ export class CuentasCobroConsumerService implements OnModuleInit {
         `Evento pdfs_cuentas_cobro_generados publicado. Total: ${cantidadPdfsGenerados}`,
       );
     } catch (error) {
+      const mensajeError =
+        (error as any)?.response?.data?.message ||
+        (error as any)?.message ||
+        'Error desconocido';
       this.logger.error(
-        'Error al procesar mensaje de generación completada:',
-        error,
+        `Error al procesar mensaje de generación completada: ${mensajeError}`,
       );
       throw error;
     }

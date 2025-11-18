@@ -31,9 +31,12 @@ export class NotificacionesService {
 
       this.logger.log(`Correo enviado exitosamente a: ${datos.destinatario}`);
     } catch (error) {
+      const mensajeError =
+        (error as any)?.response?.data?.message ||
+        (error as any)?.message ||
+        'Error desconocido';
       this.logger.error(
-        `Error al enviar correo a ${datos.destinatario}:`,
-        error,
+        `Error al enviar correo a ${datos.destinatario}: ${mensajeError}`,
       );
       throw error;
     }
@@ -69,11 +72,19 @@ export class NotificacionesService {
         'cuenta_cobro',
       );
 
+      this.logger.log(
+        `[NotificacionesService] Plantilla obtenida: ${plantilla ? 'SÍ' : 'NO'}`,
+      );
+
       if (!plantilla) {
         throw new Error(
           `No se encontró plantilla para tenant ${cuentaCobro.tenantId} tipo cuenta_cobro`,
         );
       }
+
+      this.logger.log(
+        `[NotificacionesService] Plantilla.plantillaPdf: ${plantilla.plantillaPdf || 'NO'}`,
+      );
 
       const diasGracia =
         await CuentaCobroRepository.buscarDiasGraciaPorClientePaqueteId(
@@ -91,9 +102,9 @@ export class NotificacionesService {
         this.logger.log(
           `Generando link de pago Woompi para cuenta de cobro ID: ${cuentaCobro.id}`,
         );
-
+        this.logger.warn({ cuentaCobro });
         linkPago = await this.pagosService.generarLinkPago({
-          cuentaCobroId: cuentaCobro.id,
+          cuentaCobroId: Number(cuentaCobro.id),
           valorTotal: Number(cuentaCobro.valorTotal),
           referencia: `CC-${cuentaCobro.id}`,
           descripcion: `Cuenta de cobro #${cuentaCobro.id}`,
@@ -128,9 +139,13 @@ export class NotificacionesService {
 
       return urlPdf;
     } catch (error) {
+      console.trace('[NotificacionesService.generarPdfPorId] ERROR:', error);
+      const mensajeError =
+        (error as any)?.response?.data?.message ||
+        (error as any)?.message ||
+        'Error desconocido';
       this.logger.error(
-        `Error al generar PDF de prueba para cuenta de cobro ${cuentaCobroId}:`,
-        error,
+        `Error al generar PDF de prueba para cuenta de cobro ${cuentaCobroId}: ${mensajeError}`,
       );
       throw error;
     }
@@ -165,7 +180,6 @@ export class NotificacionesService {
         tieneMasRegistros = false;
         break;
       }
-
       this.logger.log(
         `Procesando batch: ${offset} - ${offset + resultado.rows.length} de ${resultado.count} cuentas de cobro sin PDF`,
       );
@@ -247,9 +261,12 @@ export class NotificacionesService {
 
           totalGenerados++;
         } catch (error) {
+          const mensajeError =
+            (error as any)?.response?.data?.message ||
+            (error as any)?.message ||
+            'Error desconocido';
           this.logger.error(
-            `Error al generar PDF para cuenta de cobro ${cuentaCobro.id}:`,
-            error,
+            `Error al generar PDF para cuenta de cobro ${cuentaCobro.id}: ${mensajeError}`,
           );
         }
       }
@@ -357,9 +374,12 @@ export class NotificacionesService {
 
           totalEnviados++;
         } catch (error) {
+          const mensajeError =
+            (error as any)?.response?.data?.message ||
+            (error as any)?.message ||
+            'Error desconocido';
           this.logger.error(
-            `Error al enviar correo para cuenta de cobro ${cuentaCobro.id}:`,
-            error,
+            `Error al enviar correo para cuenta de cobro ${cuentaCobro.id}: ${mensajeError}`,
           );
         }
       }
