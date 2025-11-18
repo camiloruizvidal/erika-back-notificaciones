@@ -35,7 +35,7 @@ export class CuentasCobroConsumerService implements OnModuleInit {
   private async procesarPdfsGenerados(
     payload: EachMessagePayload,
   ): Promise<void> {
-    this.logger.log('=== MENSAJE KAFKA RECIBIDO EN NOTIFICACIONES ===');
+    Logger.verbose('✅ NOTIFICACIONES: Mensaje Kafka recibido - pdfs_cuentas_cobro_generados', 'CuentasCobroConsumerService');
     this.logger.log(`Topic: pdfs_cuentas_cobro_generados`);
     this.logger.log(`Partition: ${payload.partition}`);
     this.logger.log(`Offset: ${payload.message.offset}`);
