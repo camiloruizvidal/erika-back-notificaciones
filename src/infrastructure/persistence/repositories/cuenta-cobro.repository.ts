@@ -101,15 +101,19 @@ export class CuentaCobroRepository {
     id: number,
     urlPdf: string,
   ): Promise<CuentaCobroModel | null> {
-    const cuentaCobro = await CuentaCobroModel.findByPk(id);
+    const [affectedRows] = await CuentaCobroModel.update(
+      { urlPdf },
+      {
+        where: { id },
+        returning: true,
+      },
+    );
 
-    if (!cuentaCobro) {
+    if (affectedRows === 0) {
       return null;
     }
 
-    cuentaCobro.urlPdf = urlPdf;
-    await cuentaCobro.save();
-
+    const cuentaCobro = await CuentaCobroModel.findByPk(id);
     return Transformador.extraerDataValues(cuentaCobro);
   }
 
@@ -117,15 +121,19 @@ export class CuentaCobroRepository {
     id: number,
     linkPago: string,
   ): Promise<CuentaCobroModel | null> {
-    const cuentaCobro = await CuentaCobroModel.findByPk(id);
+    const [affectedRows] = await CuentaCobroModel.update(
+      { linkPago },
+      {
+        where: { id },
+        returning: true,
+      },
+    );
 
-    if (!cuentaCobro) {
+    if (affectedRows === 0) {
       return null;
     }
 
-    cuentaCobro.linkPago = linkPago;
-    await cuentaCobro.save();
-
+    const cuentaCobro = await CuentaCobroModel.findByPk(id);
     return Transformador.extraerDataValues(cuentaCobro);
   }
 
@@ -133,16 +141,22 @@ export class CuentaCobroRepository {
     id: number,
     fechaEnvio: Date,
   ): Promise<CuentaCobroModel | null> {
-    const cuentaCobro = await CuentaCobroModel.findByPk(id);
+    const [affectedRows] = await CuentaCobroModel.update(
+      {
+        siEnvioCorreo: true,
+        fechaEnvioCorreo: fechaEnvio,
+      },
+      {
+        where: { id },
+        returning: true,
+      },
+    );
 
-    if (!cuentaCobro) {
+    if (affectedRows === 0) {
       return null;
     }
 
-    cuentaCobro.siEnvioCorreo = true;
-    cuentaCobro.fechaEnvioCorreo = fechaEnvio;
-    await cuentaCobro.save();
-
+    const cuentaCobro = await CuentaCobroModel.findByPk(id);
     return Transformador.extraerDataValues(cuentaCobro);
   }
 
