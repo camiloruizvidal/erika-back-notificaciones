@@ -42,9 +42,9 @@ export class NotificacionesController {
     status: HttpStatus.INTERNAL_SERVER_ERROR,
     description: 'Error interno del servidor',
   })
-  async enviarCorreo(@Body() datos: EnviarCorreoRequestDto): Promise<void> {
+  async enviarCorreo(@Body() datos: EnviarCorreoRequestDto): Promise<{ enviado: boolean }> {
     try {
-      await this.notificacionesService.enviarCorreo(datos);
+      return await this.notificacionesService.enviarCorreo(datos);
     } catch (error) {
       this.logger.error({ error: JSON.stringify(error) });
       this.manejadorError.resolverErrorApi(error);
