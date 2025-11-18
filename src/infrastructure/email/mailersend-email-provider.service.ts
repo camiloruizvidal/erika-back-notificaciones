@@ -1,5 +1,11 @@
 import { Injectable, Logger } from '@nestjs/common';
-import { MailerSend, EmailParams, Sender, Recipient } from 'mailersend';
+import {
+  MailerSend,
+  EmailParams,
+  Sender,
+  Recipient,
+  Attachment,
+} from 'mailersend';
 import { Config } from '../config/config';
 import { IEmailProvider } from './email-provider.interface';
 import { IEnviarCorreoRequest } from '../../domain/interfaces/notificaciones.interface';
@@ -45,15 +51,39 @@ export class MailerSendEmailProvider implements IEmailProvider {
           nombreArchivo: string;
           contenidoBase64: string;
         };
-        emailParams.setAttachments([
-          {
-            filename: pdfAdjunto.nombreArchivo,
-            content: pdfAdjunto.contenidoBase64,
-            disposition: 'attachment',
-            id: 'attachment',
-          },
-        ]);
+
+        this.logger.log(
+          `Agregando PDF adjunto a MailerSend: ${pdfAdjunto.nombreArchivo} (${Math.round(pdfAdjunto.contenidoBase64.length / 1024)} KB)`,
+        );
+
+        if (
+          !pdfAdjunto.contenidoBase64 ||
+          pdfAdjunto.contenidoBase64.length === 0
+        ) {
+          this.logger.error(
+            `ERROR: El contenido base64 del PDF está vacío para ${pdfAdjunto.nombreArchivo}`,
+          );
+        } else {
+          const attachment = new Attachment(
+            pdfAdjunto.contenidoBase64,
+            pdfAdjunto.nombreArchivo,
+            'attachment',
+            'attachment',
+          );
+          emailParams.setAttachments([attachment]);
+          this.logger.log(
+            `PDF adjunto agregado correctamente a MailerSend: ${pdfAdjunto.nombreArchivo}`,
+          );
+        }
+      } else {
+        this.logger.warn(
+          `No se recibió pdfAdjunto en los datos del correo para ${datos.destinatario}`,
+        );
       }
+
+      this.logger.debug(
+        `EmailParams antes de enviar - Attachments: ${emailParams.attachments?.length || 0}`,
+      );
 
       await this.mailerSend.email.send(emailParams);
 
