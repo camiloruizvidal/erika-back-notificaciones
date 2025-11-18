@@ -4,13 +4,7 @@ import { CuentaCobroRepository } from '../../infrastructure/persistence/reposito
 import { PlantillaRepository } from '../../infrastructure/persistence/repositories/plantilla.repository';
 import { CuentaCobroModel } from '../../infrastructure/persistence/models/cuenta-cobro.model';
 import { ClienteModel } from '../../infrastructure/persistence/models/cliente.model';
-
-export interface IEnviarCorreoRequest {
-  destinatario: string;
-  asunto: string;
-  cuerpoHtml: string;
-  urlPdf?: string;
-}
+import { IEnviarCorreoRequest } from '../../domain/interfaces/notificaciones.interface';
 
 @Injectable()
 export class NotificacionesService {

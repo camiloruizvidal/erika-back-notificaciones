@@ -1,7 +1,6 @@
 import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
 import { KafkaService } from '../../infrastructure/messaging/kafka/kafka.service';
 import { EachMessagePayload } from 'kafkajs';
-import { IGeneracionCuentasCobroCompletada } from '../../domain/interfaces/kafka-messages.interface';
 import { IPdfsCuentasCobroGenerados } from '../../domain/interfaces/kafka-messages.interface';
 import { Config } from '../../infrastructure/config/config';
 import { NotificacionesService } from './notificaciones.service';
@@ -16,22 +15,28 @@ export class CuentasCobroConsumerService implements OnModuleInit {
   ) {}
 
   async onModuleInit(): Promise<void> {
-    await this.suscribirAGeneracionCompletada();
+    await this.suscribirAPdfsGenerados();
   }
 
-  private async suscribirAGeneracionCompletada(): Promise<void> {
+  private async suscribirAPdfsGenerados(): Promise<void> {
+    if (!Config.kafkaGroupId || !Config.kafkaBroker) {
+      this.logger.warn(
+        'Kafka Group ID o Broker no configurados. El consumidor de correos no se iniciará.',
+      );
+      return;
+    }
     await this.kafkaService.crearConsumer(
       Config.kafkaGroupId,
-      'generacion_cuentas_cobro_completada',
-      this.procesarGeneracionCompletada.bind(this),
+      'pdfs_cuentas_cobro_generados',
+      this.procesarPdfsGenerados.bind(this),
     );
   }
 
-  private async procesarGeneracionCompletada(
+  private async procesarPdfsGenerados(
     payload: EachMessagePayload,
   ): Promise<void> {
     this.logger.log('=== MENSAJE KAFKA RECIBIDO EN NOTIFICACIONES ===');
-    this.logger.log(`Topic: generacion_cuentas_cobro_completada`);
+    this.logger.log(`Topic: pdfs_cuentas_cobro_generados`);
     this.logger.log(`Partition: ${payload.partition}`);
     this.logger.log(`Offset: ${payload.message.offset}`);
     this.logger.log(`Value: ${payload.message.value?.toString()}`);
@@ -39,37 +44,19 @@ export class CuentasCobroConsumerService implements OnModuleInit {
     try {
       const mensaje = JSON.parse(
         payload.message.value?.toString() || '{}',
-      ) as IGeneracionCuentasCobroCompletada;
+      ) as IPdfsCuentasCobroGenerados;
 
       this.logger.log(
-        `Procesando generación completada para fecha: ${mensaje.fechaCobro}, cantidad: ${mensaje.cantidadGenerada}`,
+        `Procesando PDFs generados para fecha: ${mensaje.fechaCobro}, cantidad: ${mensaje.cantidadPdfsGenerados}`,
       );
 
       const fechaCobro = new Date(mensaje.fechaCobro);
 
-      const cantidadPdfsGenerados =
-        await this.notificacionesService.generarPdfsPorBatch(fechaCobro, 500);
+      const cantidadCorreosEnviados =
+        await this.notificacionesService.enviarCorreosPorBatch(fechaCobro, 500);
 
       this.logger.log(
-        `Generación de PDFs completada. Total generados: ${cantidadPdfsGenerados}`,
-      );
-
-      const producer = await this.kafkaService.crearProducer();
-
-      await this.kafkaService.enviarMensaje(
-        producer,
-        'pdfs_cuentas_cobro_generados',
-        {
-          fechaCobro: mensaje.fechaCobro,
-          cantidadPdfsGenerados,
-          timestamp: new Date().toISOString(),
-        } as IPdfsCuentasCobroGenerados,
-      );
-
-      await producer.disconnect();
-
-      this.logger.log(
-        `Evento pdfs_cuentas_cobro_generados publicado. Total: ${cantidadPdfsGenerados}`,
+        `Envío de correos completado. Total enviados: ${cantidadCorreosEnviados}`,
       );
     } catch (error) {
       const mensajeError =
@@ -77,7 +64,7 @@ export class CuentasCobroConsumerService implements OnModuleInit {
         (error as any)?.message ||
         'Error desconocido';
       this.logger.error(
-        `Error al procesar mensaje de generación completada: ${mensajeError}`,
+        `Error al procesar mensaje de PDFs generados: ${mensajeError}`,
       );
       throw error;
     }

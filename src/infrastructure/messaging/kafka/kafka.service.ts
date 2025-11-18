@@ -21,7 +21,7 @@ export class KafkaService implements OnModuleInit, OnModuleDestroy {
 
   constructor() {
     const kafkaConfig: KafkaConfig = {
-      clientId: Config.kafkaClientId,
+      clientId: Config.kafkaClientId!,
       brokers: [Config.kafkaBroker],
       retry: {
         initialRetryTime: 100,
@@ -32,7 +32,7 @@ export class KafkaService implements OnModuleInit, OnModuleDestroy {
     this.kafka = new Kafka(kafkaConfig);
   }
 
-  async onModuleInit(): Promise<void> {
+  onModuleInit(): void {
     this.logger.log('Kafka service inicializado');
   }
 
@@ -115,4 +115,3 @@ export class KafkaService implements OnModuleInit, OnModuleDestroy {
     }
   }
 }
-
