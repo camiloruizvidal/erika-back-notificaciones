@@ -19,9 +19,7 @@ export class PdfService {
     ? Config.projectRoot
     : path.resolve(__dirname, '../../../..');
 
-  constructor(
-    private readonly storageService: FileSystemStorageService,
-  ) {}
+  constructor(private readonly storageService: FileSystemStorageService) {}
 
   async generarPdf(
     cuentaCobro: CuentaCobroModel,
@@ -30,21 +28,15 @@ export class PdfService {
     linkPago: string,
     fechaLimitePago: Date,
   ): Promise<string> {
-    console.log({ plantilla });
-
     try {
       this.logger.log(
         `Generando PDF para cuenta de cobro ID: ${cuentaCobro.id}`,
       );
 
-      await this.asegurarDirectorio();
-
       const nombreArchivo = this.generarNombreArchivo(
         cuentaCobro.id,
         cliente.identificacion || '',
       );
-
-      const rutaCompleta = path.join(this.directorioPdfs, nombreArchivo);
 
       const tenant = await CuentaCobroRepository.buscarTenantPorId(
         cuentaCobro.tenantId,
@@ -55,11 +47,10 @@ export class PdfService {
       );
 
       // Obtener la ruta del archivo Word
-      // plantillaPdf ahora contiene la ruta del archivo Word (TEXT)
-      // rutaPdf contiene la ruta donde se guardará el PDF generado
-      const rutaArchivo: string | null = plantilla.plantillaPdf || null;
+      // plantillaPdf contiene la ruta del archivo Word (TEXT)
+      const rutaArchivoWord: string | null = plantilla.plantillaPdf || null;
 
-      if (!rutaArchivo) {
+      if (!rutaArchivoWord) {
         this.logger.error(
           `[PdfService] No se encontró ruta de plantilla PDF válida`,
         );
@@ -71,16 +62,26 @@ export class PdfService {
         );
       }
 
-      this.logger.log(`[PdfService] Ruta del archivo Word: ${rutaArchivo}`);
+      // rutaPdf contiene la ruta base donde se guardará el PDF generado
+      const rutaBasePdf: string | null = plantilla.rutaPdf || null;
 
-      // Leer el archivo desde el sistema de archivos
-      const rutaCompletaPlantilla = this.resolverRutaPlantilla(rutaArchivo);
+      if (!rutaBasePdf) {
+        this.logger.error(
+          `[PdfService] No se encontró ruta base para guardar PDF`,
+        );
+        throw new Error(
+          'No se encontró ruta base para guardar PDF. La plantilla debe tener la ruta en rutaPdf',
+        );
+      }
+
+      this.logger.log(`[PdfService] Ruta del archivo Word: ${rutaArchivoWord}`);
+      this.logger.log(`[PdfService] Ruta base para PDF: ${rutaBasePdf}`);
+
+      // Leer el archivo Word desde el sistema de archivos
+      const rutaCompletaPlantilla = this.resolverRutaPlantilla(rutaArchivoWord);
       this.logger.log(
         `[PdfService] Ruta completa plantilla resuelta: ${rutaCompletaPlantilla}`,
       );
-      console.log('=========================================================');
-      console.log({ rutaCompletaPlantilla });
-      console.log('=========================================================');
       const bufferArchivo = await fs.readFile(rutaCompletaPlantilla);
       this.logger.log(
         `[PdfService] Archivo leído. Tamaño: ${bufferArchivo.length} bytes`,
@@ -99,9 +100,15 @@ export class PdfService {
         `[PdfService] Después de procesarPlantillaDesdeBuffer. HTML length: ${htmlContent?.length || 'N/A'}`,
       );
 
-      await this.convertirHtmlAPdf(htmlContent, rutaCompleta);
+      // Generar PDF en memoria (buffer)
+      const pdfBuffer = await this.convertirHtmlAPdfBuffer(htmlContent);
 
-      const urlPdf = this.generarUrlPdf(nombreArchivo);
+      // Guardar PDF usando el servicio de Storage
+      const urlPdf = await this.storageService.guardar(
+        pdfBuffer,
+        rutaBasePdf,
+        nombreArchivo,
+      );
 
       this.logger.log(`PDF generado exitosamente: ${urlPdf}`);
 
@@ -119,24 +126,11 @@ export class PdfService {
     }
   }
 
-  private async asegurarDirectorio(): Promise<void> {
-    try {
-      await fs.access(this.directorioPdfs);
-    } catch {
-      await fs.mkdir(this.directorioPdfs, { recursive: true });
-    }
-  }
-
   private generarNombreArchivo(
     cuentaCobroId: number,
     identificacionCliente: string,
   ): string {
     return `${cuentaCobroId}_${identificacionCliente}.pdf`;
-  }
-
-  private generarUrlPdf(nombreArchivo: string): string {
-    const baseUrl = Config.pdfBaseUrl;
-    return `${baseUrl}/${nombreArchivo}`;
   }
 
   private async procesarPlantillaDesdeRuta(
@@ -368,10 +362,12 @@ export class PdfService {
     return path.join(this.directorioBaseProyecto, rutaRelativa);
   }
 
-  private async convertirHtmlAPdf(
-    htmlContent: string,
-    rutaDestino: string,
-  ): Promise<void> {
+  /**
+   * Convierte HTML a PDF y retorna el buffer en memoria.
+   * @param htmlContent Contenido HTML a convertir
+   * @returns Buffer del PDF generado
+   */
+  private async convertirHtmlAPdfBuffer(htmlContent: string): Promise<Buffer> {
     const browser = await puppeteer.launch({
       headless: true,
       args: ['--no-sandbox', '--disable-setuid-sandbox'],
@@ -380,8 +376,7 @@ export class PdfService {
     try {
       const page = await browser.newPage();
       await page.setContent(htmlContent, { waitUntil: 'networkidle0' });
-      await page.pdf({
-        path: rutaDestino,
+      const pdfBuffer = await page.pdf({
         format: 'A4',
         printBackground: true,
         margin: {
@@ -391,6 +386,7 @@ export class PdfService {
           left: '15mm',
         },
       });
+      return Buffer.from(pdfBuffer);
     } finally {
       await browser.close();
     }
