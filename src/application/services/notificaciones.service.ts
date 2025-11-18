@@ -2,10 +2,11 @@ import { Injectable, Logger } from '@nestjs/common';
 import * as moment from 'moment-timezone';
 import { CuentaCobroRepository } from '../../infrastructure/persistence/repositories/cuenta-cobro.repository';
 import { PlantillaRepository } from '../../infrastructure/persistence/repositories/plantilla.repository';
-import { PdfService } from './pdf.service';
 import { PagosService } from './pagos.service';
+import { PdfGeneratorService, IPdfGeneratorRequest } from './pdf-generator.service';
 import { CuentaCobroModel } from '../../infrastructure/persistence/models/cuenta-cobro.model';
 import { ClienteModel } from '../../infrastructure/persistence/models/cliente.model';
+import { TenantModel } from '../../infrastructure/persistence/models/tenant.model';
 
 export interface IEnviarCorreoRequest {
   destinatario: string;
@@ -19,7 +20,7 @@ export class NotificacionesService {
   private readonly logger = new Logger(NotificacionesService.name);
 
   constructor(
-    private readonly pdfService: PdfService,
+    private readonly pdfGeneratorService: PdfGeneratorService,
     private readonly pagosService: PagosService,
   ) {}
 
@@ -125,13 +126,37 @@ export class NotificacionesService {
         );
       }
 
-      const urlPdf = await this.pdfService.generarPdf(
-        cuentaCobro,
-        cliente,
-        plantilla,
-        linkPago,
-        fechaLimitePago,
+      const tenant = await CuentaCobroRepository.buscarTenantPorId(
+        cuentaCobro.tenantId,
       );
+
+      if (!plantilla.plantillaPdf) {
+        throw new Error(
+          'No se encontró ruta de plantilla PDF válida. La plantilla debe tener la ruta en plantillaPdf',
+        );
+      }
+
+      if (!plantilla.rutaPdf) {
+        throw new Error(
+          'No se encontró ruta base para guardar PDF. La plantilla debe tener la ruta en rutaPdf',
+        );
+      }
+
+      const datosPdf: IPdfGeneratorRequest = {
+        plantilla: plantilla.plantillaPdf,
+        datos: this.mapearDatosParaPlantilla(
+          cuentaCobro,
+          cliente,
+          tenant,
+          fechaLimitePago,
+          linkPago,
+        ),
+        rutaSalida: plantilla.rutaPdf,
+        nombreArchivo: `${cuentaCobro.id}_${cliente.identificacion || ''}.pdf`,
+        tieneContrasena: false,
+      };
+
+      const urlPdf = await this.pdfGeneratorService.generarPdf(datosPdf);
 
       await CuentaCobroRepository.actualizarUrlPdf(cuentaCobro.id, urlPdf);
 
@@ -249,13 +274,39 @@ export class NotificacionesService {
             continue;
           }
 
-          const urlPdf = await this.pdfService.generarPdf(
-            cuentaCobro,
-            cliente,
-            plantilla,
-            linkPago,
-            fechaLimitePago,
+          const tenant = await CuentaCobroRepository.buscarTenantPorId(
+            cuentaCobro.tenantId,
           );
+
+          if (!plantilla.plantillaPdf) {
+            this.logger.warn(
+              `No se encontró ruta de plantilla PDF para cuenta de cobro ${cuentaCobro.id}`,
+            );
+            continue;
+          }
+
+          if (!plantilla.rutaPdf) {
+            this.logger.warn(
+              `No se encontró ruta base para guardar PDF para cuenta de cobro ${cuentaCobro.id}`,
+            );
+            continue;
+          }
+
+          const datosPdf: IPdfGeneratorRequest = {
+            plantilla: plantilla.plantillaPdf,
+            datos: this.mapearDatosParaPlantilla(
+              cuentaCobro,
+              cliente,
+              tenant,
+              fechaLimitePago,
+              linkPago,
+            ),
+            rutaSalida: plantilla.rutaPdf,
+            nombreArchivo: `${cuentaCobro.id}_${cliente.identificacion || ''}.pdf`,
+            tieneContrasena: false,
+          };
+
+          const urlPdf = await this.pdfGeneratorService.generarPdf(datosPdf);
 
           await CuentaCobroRepository.actualizarUrlPdf(cuentaCobro.id, urlPdf);
 
@@ -393,6 +444,32 @@ export class NotificacionesService {
     );
 
     return totalEnviados;
+  }
+
+  private mapearDatosParaPlantilla(
+    cuentaCobro: CuentaCobroModel,
+    cliente: ClienteModel,
+    tenant: TenantModel | null,
+    fechaLimitePago: Date,
+    linkPago: string,
+  ): Record<string, any> {
+    const valorTotalFormateado = new Intl.NumberFormat('es-CO', {
+      style: 'currency',
+      currency: 'COP',
+    }).format(Number(cuentaCobro.valorTotal));
+
+    const fechaLimiteFormateada = moment
+      .tz(fechaLimitePago, 'America/Bogota')
+      .format('DD [de] MMMM [de] YYYY');
+
+    return {
+      'cliente.primer_nombre': cliente.primerNombre || '',
+      'cliente.primer_apellido': cliente.primerApellido || '',
+      'empresa.nombre': tenant?.nombre || '',
+      'cuenta.valor_total': valorTotalFormateado,
+      'cuenta.fecha_limite_pago': fechaLimiteFormateada,
+      'cuenta.link_pago': linkPago,
+    };
   }
 
   private calcularFechaLimitePago(

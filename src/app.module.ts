@@ -9,7 +9,7 @@ import { CuentasCobroConsumerService } from './application/services/cuentas-cobr
 import { CorreosConsumerService } from './application/services/correos-consumer.service';
 import { NotificacionesController } from './presentation/controllers/notificaciones.controller';
 import { NotificacionesService } from './application/services/notificaciones.service';
-import { PdfService } from './application/services/pdf.service';
+import { PdfGeneratorService } from './application/services/pdf-generator.service';
 import { PagosService } from './application/services/pagos.service';
 import { ManejadorError } from './utils/manejador-error/manejador-error';
 
@@ -21,7 +21,7 @@ import { ManejadorError } from './utils/manejador-error/manejador-error';
     CuentasCobroConsumerService,
     CorreosConsumerService,
     NotificacionesService,
-    PdfService,
+    PdfGeneratorService,
     PagosService,
     ManejadorError,
   ],
