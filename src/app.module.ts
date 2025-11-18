@@ -5,14 +5,11 @@ import { AppService } from './app.service';
 import { NotificacionesController } from './presentation/controllers/notificaciones.controller';
 import { NotificacionesService } from './application/services/notificaciones.service';
 import { ManejadorError } from './utils/manejador-error/manejador-error';
+import { EmailModule } from './infrastructure/email/email.module';
 
 @Module({
-  imports: [HttpModule],
+  imports: [HttpModule, EmailModule],
   controllers: [AppController, NotificacionesController],
-  providers: [
-    AppService,
-    NotificacionesService,
-    ManejadorError,
-  ],
+  providers: [AppService, NotificacionesService, ManejadorError],
 })
 export class AppModule {}

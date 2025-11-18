@@ -17,6 +17,12 @@ export class Config {
   static readonly kafkaClientId = process.env.KAFKA_CLIENT_ID;
   static readonly kafkaGroupId = process.env.KAFKA_GROUP_ID;
   static readonly pagosBaseUrl = process.env.PAGOS_BASE_URL;
+  static readonly mailersendApiToken = process.env
+    .MAILERSEND_API_TOKEN as string;
+  static readonly mailersendFromEmail = process.env
+    .MAILERSEND_FROM_EMAIL as string;
+  static readonly mailersendFromName = process.env
+    .MAILERSEND_FROM_NAME as string;
 }
 
 const errors: string[] = [];

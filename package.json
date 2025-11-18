@@ -37,6 +37,7 @@
     "dotenv": "^17.2.3",
     "jsonwebtoken": "^9.0.2",
     "kafkajs": "^2.2.4",
+    "mailersend": "^2.6.0",
     "mammoth": "^1.11.0",
     "moment-timezone": "^0.6.0",
     "pg": "^8.16.3",

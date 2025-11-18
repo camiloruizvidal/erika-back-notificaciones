@@ -1,15 +1,22 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Inject, Injectable, Logger } from '@nestjs/common';
 import { IEnviarCorreoRequest } from '../../domain/interfaces/notificaciones.interface';
+import type { IEmailProvider } from '../../infrastructure/email/email-provider.interface';
+import { EMAIL_PROVIDER_TOKEN } from '../../infrastructure/email/email-provider.interface';
 
 @Injectable()
 export class NotificacionesService {
   private readonly logger = new Logger(NotificacionesService.name);
 
+  constructor(
+    @Inject(EMAIL_PROVIDER_TOKEN)
+    private readonly emailProvider: IEmailProvider,
+  ) {}
+
   async enviarCorreo(
     datos: IEnviarCorreoRequest,
   ): Promise<{ enviado: boolean }> {
     try {
-      this.logger.log('=== INICIO ENVÍO DE CORREO (FAKE) ===');
+      this.logger.log('=== INICIO ENVÍO DE CORREO ===');
       this.logger.log(`De: erika-back-programador`);
       this.logger.log(`Para: ${datos.destinatario}`);
       this.logger.log(`Asunto: ${datos.asunto}`);
@@ -32,12 +39,10 @@ export class NotificacionesService {
 
       this.logger.debug(`Cuerpo (${datos.tipo}): ${datos.cuerpo}`);
 
-      await this.enviarCorreoElectronico(datos);
+      await this.emailProvider.enviarCorreo(datos);
 
-      this.logger.log(
-        `Correo enviado exitosamente (FAKE) a: ${datos.destinatario}`,
-      );
-      this.logger.log('=== FIN ENVÍO DE CORREO (FAKE) ===');
+      this.logger.log(`Correo enviado exitosamente a: ${datos.destinatario}`);
+      this.logger.log('=== FIN ENVÍO DE CORREO ===');
 
       return { enviado: true };
     } catch (error) {
@@ -45,20 +50,5 @@ export class NotificacionesService {
       this.logger.error(`Error al enviar correo a ${datos.destinatario}`);
       throw error;
     }
-  }
-
-  private async enviarCorreoElectronico(
-    datos: IEnviarCorreoRequest,
-  ): Promise<void> {
-    this.logger.verbose({ datos: JSON.stringify(datos, null, 2) });
-    this.logger.log(`[FAKE] Simulando envío de correo electrónico`);
-
-    // TODO: Integrar con servicio de correo (SendGrid, SES, etc.)
-    // Por ahora solo logueamos y retornamos éxito como fake
-    // Cuando se integre, usar datos.pdfAdjunto.contenidoBase64 para adjuntar el PDF
-    // Ejemplo con nodemailer:
-    // const buffer = Buffer.from(datos.pdfAdjunto.contenidoBase64, 'base64');
-    // attachments: [{ filename: datos.pdfAdjunto.nombreArchivo, content: buffer }]
-    await Promise.resolve();
   }
 }
