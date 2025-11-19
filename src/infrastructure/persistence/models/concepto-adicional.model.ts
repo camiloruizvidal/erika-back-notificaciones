@@ -28,60 +28,60 @@ export class ConceptoAdicionalModel extends Model {
 
   @AllowNull(false)
   @Column({ type: DataType.BIGINT, field: 'tenant_id' })
-  tenantId!: number;
+  declare tenantId: number;
 
   @AllowNull(false)
   @Column({ type: DataType.BIGINT, field: 'cliente_id' })
-  clienteId!: number;
+  declare clienteId: number;
 
   @AllowNull(true)
   @Column({ type: DataType.BIGINT, field: 'cliente_paquete_id' })
-  clientePaqueteId!: number | null;
+  declare clientePaqueteId: number | null;
 
   @AllowNull(false)
   @Column({ type: DataType.STRING(255) })
-  concepto!: string;
+  declare concepto: string;
 
   @AllowNull(true)
   @Column({ type: DataType.TEXT })
-  descripcion!: string | null;
+  declare descripcion: string | null;
 
   @AllowNull(false)
   @Column({
     type: DataType.DECIMAL(12, 2),
   })
-  valor!: number;
+  declare valor: number;
 
   @Default(false)
   @AllowNull(false)
   @Column({ type: DataType.BOOLEAN })
-  aplicado!: boolean;
+  declare aplicado: boolean;
 
   @Default(false)
   @AllowNull(false)
   @Column({ type: DataType.BOOLEAN, field: 'siguiente_cuenta_cobro' })
-  siguienteCuentaCobro!: boolean;
+  declare siguienteCuentaCobro: boolean;
 
   @ForeignKey(() => CuentaCobroModel)
   @AllowNull(true)
   @Column({ type: DataType.BIGINT, field: 'cuenta_cobro_id' })
-  cuentaCobroId!: number | null;
+  declare cuentaCobroId: number | null;
 
   @AllowNull(true)
   @Column({ type: DataType.DATE, field: 'fecha_aplicacion' })
-  fechaAplicacion!: Date | null;
+  declare fechaAplicacion: Date | null;
 
   @AllowNull(true)
   @Column({ type: DataType.INTEGER, field: 'mes_aplicacion' })
-  mesAplicacion!: number | null;
+  declare mesAplicacion: number | null;
 
   @AllowNull(true)
   @Column({ type: DataType.INTEGER, field: 'anio_aplicacion' })
-  anioAplicacion!: number | null;
+  declare anioAplicacion: number | null;
 
   @AllowNull(true)
   @Column({ type: DataType.TEXT })
-  observaciones!: string | null;
+  declare observaciones: string | null;
 
   @BelongsTo(() => CuentaCobroModel)
   cuentaCobro?: CuentaCobroModel;

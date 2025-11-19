@@ -25,55 +25,55 @@ export class ClienteModel extends Model {
 
   @AllowNull(false)
   @Column({ type: DataType.BIGINT, field: 'tenant_id' })
-  tenantId!: number;
+  declare tenantId: number;
 
   @AllowNull(false)
   @Column({ type: DataType.BIGINT, field: 'tipo_documento_id' })
-  tipoDocumentoId!: number;
+  declare tipoDocumentoId: number;
 
   @AllowNull(false)
   @Column({ type: DataType.STRING(80), field: 'primer_nombre' })
-  primerNombre!: string;
+  declare primerNombre: string;
 
   @AllowNull(true)
   @Column({ type: DataType.STRING(80), field: 'segundo_nombre' })
-  segundoNombre!: string | null;
+  declare segundoNombre: string | null;
 
   @AllowNull(false)
   @Column({ type: DataType.STRING(80), field: 'primer_apellido' })
-  primerApellido!: string;
+  declare primerApellido: string;
 
   @AllowNull(true)
   @Column({ type: DataType.STRING(80), field: 'segundo_apellido' })
-  segundoApellido!: string | null;
+  declare segundoApellido: string | null;
 
   @AllowNull(false)
   @Column({ type: DataType.STRING(255), field: 'nombre_completo' })
-  nombreCompleto!: string;
+  declare nombreCompleto: string;
 
   @AllowNull(false)
   @Column({ type: DataType.STRING(150) })
-  correo!: string;
+  declare correo: string;
 
   @AllowNull(true)
   @Column({ type: DataType.STRING(30) })
-  telefono!: string | null;
+  declare telefono: string | null;
 
   @AllowNull(true)
   @Column({ type: DataType.STRING(50) })
-  identificacion!: string | null;
+  declare identificacion: string | null;
 
   @AllowNull(true)
   @Column({ type: DataType.DATE, field: 'fecha_nacimiento' })
-  fechaNacimiento!: Date | null;
+  declare fechaNacimiento: Date | null;
 
   @AllowNull(true)
   @Column({ type: DataType.STRING(255) })
-  direccion!: string | null;
+  declare direccion: string | null;
 
   @Default(true)
   @AllowNull(false)
   @Column({ type: DataType.BOOLEAN })
-  activo!: boolean;
+  declare activo: boolean;
 }
 

@@ -25,27 +25,27 @@ export class PlantillaModel extends Model {
 
   @AllowNull(false)
   @Column({ type: DataType.BIGINT, field: 'tenant_id' })
-  tenantId!: number;
+  declare tenantId: number;
 
   @AllowNull(false)
   @Column({ type: DataType.STRING(50) })
-  tipo!: string;
+  declare tipo: string;
 
   @AllowNull(false)
   @Column({ type: DataType.TEXT, field: 'plantilla_correo' })
-  plantillaCorreo!: string;
+  declare plantillaCorreo: string;
 
   @AllowNull(true)
   @Column({ type: DataType.TEXT, field: 'plantilla_pdf' })
-  plantillaPdf!: string | null;
+  declare plantillaPdf: string | null;
 
   @AllowNull(true)
   @Column({ type: DataType.STRING(500), field: 'ruta_pdf' })
-  rutaPdf!: string | null;
+  declare rutaPdf: string | null;
 
   @Default(true)
   @AllowNull(false)
   @Column({ type: DataType.BOOLEAN })
-  activo!: boolean;
+  declare activo: boolean;
 }
 

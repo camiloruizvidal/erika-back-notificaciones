@@ -21,13 +21,13 @@ export class ClientePaqueteModel extends Model {
 
   @AllowNull(false)
   @Column({ type: DataType.BIGINT, field: 'tenant_id' })
-  tenantId!: number;
+  declare tenantId: number;
 
   @AllowNull(false)
   @Column({ type: DataType.BIGINT, field: 'cliente_id' })
-  clienteId!: number;
+  declare clienteId: number;
 
   @AllowNull(true)
   @Column({ type: DataType.INTEGER, field: 'dias_gracia' })
-  diasGracia!: number | null;
+  declare diasGracia: number | null;
 }

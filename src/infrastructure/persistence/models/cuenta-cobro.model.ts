@@ -29,33 +29,33 @@ export class CuentaCobroModel extends Model {
 
   @AllowNull(false)
   @Column({ type: DataType.BIGINT, field: 'tenant_id' })
-  tenantId!: number;
+  declare tenantId: number;
 
   @AllowNull(false)
   @Column({ type: DataType.BIGINT, field: 'cliente_id' })
-  clienteId!: number;
+  declare clienteId: number;
 
   @AllowNull(false)
   @Column({ type: DataType.BIGINT, field: 'cliente_paquete_id' })
-  clientePaqueteId!: number;
+  declare clientePaqueteId: number;
 
   @AllowNull(false)
   @Column({ type: DataType.DATE, field: 'fecha_cobro' })
-  fechaCobro!: Date;
+  declare fechaCobro: Date;
 
   @AllowNull(false)
   @Column({
     type: DataType.DECIMAL(12, 2),
     field: 'valor_total',
   })
-  valorTotal!: number;
+  declare valorTotal: number;
 
   @AllowNull(false)
   @Column({
     type: DataType.DECIMAL(12, 2),
     field: 'valor_paquete',
   })
-  valorPaquete!: number;
+  declare valorPaquete: number;
 
   @Default(0)
   @AllowNull(false)
@@ -63,33 +63,33 @@ export class CuentaCobroModel extends Model {
     type: DataType.DECIMAL(12, 2),
     field: 'valor_conceptos_adicionales',
   })
-  valorConceptosAdicionales!: number;
+  declare valorConceptosAdicionales: number;
 
   @Default(EEstadoCuentaCobro.PENDIENTE)
   @AllowNull(false)
   @Column({ type: DataType.STRING(20) })
-  estado!: EEstadoCuentaCobro;
+  declare estado: EEstadoCuentaCobro;
 
   @AllowNull(true)
   @Column({ type: DataType.STRING(500), field: 'url_pdf' })
-  urlPdf!: string | null;
+  declare urlPdf: string | null;
 
   @Default(false)
   @AllowNull(false)
   @Column({ type: DataType.BOOLEAN, field: 'si_envio_correo' })
-  siEnvioCorreo!: boolean;
+  declare siEnvioCorreo: boolean;
 
   @AllowNull(true)
   @Column({ type: DataType.DATE, field: 'fecha_envio_correo' })
-  fechaEnvioCorreo!: Date | null;
+  declare fechaEnvioCorreo: Date | null;
 
   @AllowNull(true)
   @Column({ type: DataType.TEXT })
-  observaciones!: string | null;
+  declare observaciones: string | null;
 
   @AllowNull(true)
   @Column({ type: DataType.TEXT, field: 'link_pago' })
-  linkPago!: string | null;
+  declare linkPago: string | null;
 
   @HasMany(() => CuentaCobroServicioModel, 'cuenta_cobro_id')
   servicios?: CuentaCobroServicioModel[];
