@@ -9,8 +9,10 @@ import {
   Post,
 } from '@nestjs/common';
 import { ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
+import { plainToInstance } from 'class-transformer';
 import { NotificacionesService } from '../../application/services/notificaciones.service';
 import { EnviarCorreoRequestDto } from '../dto/enviar-correo.request.dto';
+import { EnviarCorreoResponseDto } from '../dto/enviar-correo.response.dto';
 import { ManejadorError } from '../../utils/manejador-error/manejador-error';
 
 @ApiTags('Notificaciones')
@@ -33,6 +35,7 @@ export class NotificacionesController {
   @ApiResponse({
     status: HttpStatus.OK,
     description: 'Correo enviado exitosamente',
+    type: EnviarCorreoResponseDto,
   })
   @ApiResponse({
     status: HttpStatus.BAD_REQUEST,
@@ -42,9 +45,10 @@ export class NotificacionesController {
     status: HttpStatus.INTERNAL_SERVER_ERROR,
     description: 'Error interno del servidor',
   })
-  async enviarCorreo(@Body() datos: EnviarCorreoRequestDto): Promise<{ enviado: boolean }> {
+  async enviarCorreo(@Body() datos: EnviarCorreoRequestDto): Promise<EnviarCorreoResponseDto> {
     try {
-      return await this.notificacionesService.enviarCorreo(datos);
+      const resultado = await this.notificacionesService.enviarCorreo(datos);
+      return plainToInstance(EnviarCorreoResponseDto, resultado);
     } catch (error) {
       this.logger.error({ error: JSON.stringify(error) });
       this.manejadorError.resolverErrorApi(error);
