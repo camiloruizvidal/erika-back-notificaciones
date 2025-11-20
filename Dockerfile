@@ -8,6 +8,12 @@ COPY package*.json ./
 COPY tsconfig*.json ./
 COPY nest-cli.json ./
 
+# Configurar npm para mejor manejo de red
+RUN npm config set fetch-retries 5 && \
+    npm config set fetch-retry-mintimeout 20000 && \
+    npm config set fetch-retry-maxtimeout 120000 && \
+    npm config set fetch-timeout 300000
+
 # Instalar dependencias
 RUN npm ci
 
@@ -28,6 +34,12 @@ RUN addgroup -g 1001 -S nodejs && \
 
 # Copiar archivos de dependencias
 COPY package*.json ./
+
+# Configurar npm para mejor manejo de red
+RUN npm config set fetch-retries 5 && \
+    npm config set fetch-retry-mintimeout 20000 && \
+    npm config set fetch-retry-maxtimeout 120000 && \
+    npm config set fetch-timeout 300000
 
 # Instalar solo dependencias de producción
 RUN npm ci --only=production && \
